@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DXF绘图工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dxf/4.3.0/dxf.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        dark: '#1F2937',
+                        light: '#F3F4F6',
+                        accent: '#F59E0B'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .panel-shadow {
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            }
+            .btn-hover {
+                @apply transition-all duration-200 hover:bg-opacity-80 active:scale-95;
+            }
+            .input-focus {
+                @apply focus:ring-2 focus:ring-primary focus:outline-none;
+            }
+            .canvas-container {
+                touch-action: none;
+            }
+        }
+        
+        body {
+            overscroll-behavior: none;
+            touch-action: none;
+        }
+        
+        .control-panel {
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        
+        .slider-thumb::-webkit-slider-thumb {
+            @apply appearance-none w-5 h-5 rounded-full bg-primary cursor-pointer;
+        }
+        
+        .slider-thumb::-moz-range-thumb {
+            @apply w-5 h-5 rounded-full bg-primary border-0 cursor-pointer;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white overflow-hidden h-screen">
+    <div class="flex flex-col h-screen relative">
+        <!-- 顶部工具栏 -->
+        <div class="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 flex items-center space-x-4 bg-dark bg-opacity-70 px-4 py-2 rounded-full panel-shadow">
+            <button id="zoom-in" class="w-10 h-10 flex items-center justify-center rounded-full bg-gray-800 btn-hover">
+                <i class="fa fa-search-plus text-lg"></i>
+            </button>
+            <button id="zoom-out" class="w-10 h-10 flex items-center justify-center rounded-full bg-gray-800 btn-hover">
+                <i class="fa fa-search-minus text-lg"></i>
+            </button>
+            <button id="zoom-reset" class="w-10 h-10 flex items-center justify-center rounded-full bg-gray-800 btn-hover">
+                <i class="fa fa-arrows-alt text-lg"></i>
+            </button>
+            <div class="h-6 border-r border-gray-600 mx-1"></div>
+            <button id="history-btn" class="w-10 h-10 flex items-center justify-center rounded-full bg-accent btn-hover">
+                <i class="fa fa-history text-lg"></i>
+            </button>
+            <button id="save-btn" class="w-10 h-10 flex items-center justify-center rounded-full bg-primary btn-hover">
+                <i class="fa fa-download text-lg"></i>
+            </button>
+            <button id="share-btn" class="w-10 h-10 flex items-center justify-center rounded-full bg-secondary btn-hover">
+                <i class="fa fa-share-alt text-lg"></i>
+            </button>
+        </div>
+        
+        <!-- 主画布区域 -->
+        <div id="canvas-container" class="canvas-container flex-1 relative overflow-hidden">
+            <canvas id="drawing-canvas" class="absolute top-0 left-0"></canvas>
+        </div>
+        
+        <!-- 左侧控制面板 -->
+        <div class="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 control-panel bg-dark bg-opacity-70 rounded-2xl p-4 w-28 panel-shadow">
+            <div class="mb-6">
+                <label class="block text-xs text-gray-400 mb-1">长度 (mm)</label>
+                <div class="relative">
+                    <input type="number" id="distance-input" class="w-full bg-gray-800 rounded-lg px-3 py-2 text-center input-focus" value="100" min="1" max="200000">
+                    <div class="absolute -right-2 -top-2 bg-primary text-xs px-2 py-1 rounded-full">mm</div>
+                </div>
+                <!-- 数字输入键盘 -->
+                <div class="mt-2 grid grid-cols-3 gap-1">
+                    <button class="num-btn bg-gray-800 hover:bg-gray-700 rounded p-2 text-center text-sm" data-value="1">1</button>
+                    <button class="num-btn bg-gray-800 hover:bg-gray-700 rounded p-2 text-center text-sm" data-value="2">2</button>
+                    <button class="num-btn bg-gray-800 hover:bg-gray-700 rounded p-2 text-center text-sm" data-value="3">3</button>
+                    <button class="num-btn bg-gray-800 hover:bg-gray-700 rounded p-2 text-center text-sm" data-value="4">4</button>
+                    <button class="num-btn bg-gray-800 hover:bg-gray-700 rounded p-2 text-center text-sm" data-value="5">5</button>
+                    <button class="num-btn bg-gray-800 hover:bg-gray-700 rounded p-2 text-center text-sm" data-value="6">6</button>
+                    <button class="num-btn bg-gray-800 hover:bg-gray-700 rounded p-2 text-center text-sm" data-value="7">7</button>
+                    <button class="num-btn bg-gray-800 hover:bg-gray-700 rounded p-2 text-center text-sm" data-value="8">8</button>
+                    <button class="num-btn bg-gray-800 hover:bg-gray-700 rounded p-2 text-center text-sm" data-value="9">9</button>
+                    <button class="num-btn bg-gray-800 hover:bg-gray-700 rounded p-2 text-center text-sm" data-value="0">0</button>
+                    <button class="num-btn bg-gray-800 hover:bg-gray-700 rounded p-2 text-center text-sm" data-value=".">.</button>
+                    <button id="clear-btn" class="bg-red-600 hover:bg-red-500 rounded p-2 text-center text-sm">清除</button>
+                </div>
+            </div>
+            
+            <button id="confirm-btn" class="w-full bg-green-600 hover:bg-green-500 rounded-lg p-3 flex items-center justify-center mb-3 btn-hover">
+                <i class="fa fa-check text-xl mr-2"></i>
+                <span>确认</span>
+            </button>
+            
+            <button id="delete-btn" class="w-full bg-red-600 hover:bg-red-500 rounded-lg p-3 flex items-center justify-center mb-4 btn-hover">
+                <i class="fa fa-trash text-xl mr-2"></i>
+                <span>删除</span>
+            </button>
+            
+            <div class="mb-4">
+                <label class="block text-xs text-gray-400 mb-1">线宽</label>
+                <input type="range" id="line-width" class="w-full slider-thumb" min="1" max="10" value="2">
+                <div class="text-center text-sm mt-1" id="line-width-value">2px</div>
+            </div>
+        </div>
+        
+        <!-- 右侧控制面板 -->
+        <div class="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 control-panel bg-dark bg-opacity-70 rounded-2xl p-4 w-28 panel-shadow">
+            <div class="mb-4">
+                <button id="select-start-btn" class="w-full bg-accent hover:bg-yellow-500 rounded-lg p-3 flex items-center justify-center btn-hover">
+                    <i class="fa fa-crosshairs text-xl mr-2"></i>
+                    <span>选择起点</span>
+                </button>
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-xs text-gray-400 mb-1 text-center">线走向</label>
+                <div class="space-y-2">
+                    <button class="direction-btn w-full bg-primary hover:bg-blue-600 rounded-lg p-3 flex items-center justify-center btn-hover" data-direction="up">
+                        <i class="fa fa-arrow-up text-xl"></i>
+                    </button>
+                    <div class="flex space-x-2">
+                        <button class="direction-btn flex-1 bg-primary hover:bg-blue-600 rounded-lg p-3 flex items-center justify-center btn-hover" data-direction="left">
+                            <i class="fa fa-arrow-left text-xl"></i>
+                        </button>
+                        <button class="direction-btn flex-1 bg-primary hover:bg-blue-600 rounded-lg p-3 flex items-center justify-center btn-hover" data-direction="right">
+                            <i class="fa fa-arrow-right text-xl"></i>
+                        </button>
+                    </div>
+                    <button class="direction-btn w-full bg-primary hover:bg-blue-600 rounded-lg p-3 flex items-center justify-center btn-hover" data-direction="down">
+                        <i class="fa fa-arrow-down text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">坐标</label>
+                <div class="bg-gray-800 rounded-lg p-2 text-xs text-center">
+                    <div id="current-position">X: 0, Y: 0</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 分享菜单 (默认隐藏) -->
+        <div id="share-menu" class="fixed inset-0 bg-black bg-opacity-50 z-20 hidden flex items-center justify-center">
+            <div class="bg-dark rounded-2xl p-6 w-80 panel-shadow">
+                <h3 class="text-lg font-semibold mb-4 text-center">分享或保存</h3>
+                <div class="space-y-3">
+                    <button id="save-dxf" class="w-full bg-primary hover:bg-blue-600 rounded-lg p-3 flex items-center justify-center btn-hover">
+                        <i class="fa fa-file-text-o text-lg mr-2"></i>
+                        <span>保存为DXF</span>
+                    </button>
+                    <button id="save-image" class="w-full bg-secondary hover:bg-green-600 rounded-lg p-3 flex items-center justify-center btn-hover">
+                        <i class="fa fa-image text-lg mr-2"></i>
+                        <span>保存为图片</span>
+                    </button>
+                    <button id="share-wechat" class="w-full bg-green-600 hover:bg-green-500 rounded-lg p-3 flex items-center justify-center btn-hover">
+                        <i class="fa fa-weixin text-lg mr-2"></i>
+                        <span>分享到微信</span>
+                    </button>
+                </div>
+                <button id="close-share" class="w-full mt-4 bg-gray-700 hover:bg-gray-600 rounded-lg p-3 flex items-center justify-center btn-hover">
+                    <i class="fa fa-times text-lg mr-2"></i>
+                    <span>关闭</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- 历史记录面板 (默认隐藏) -->
+        <div id="history-panel" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-10 control-panel bg-dark bg-opacity-70 rounded-2xl p-4 w-3/4 max-w-md panel-shadow hidden">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-lg font-semibold">历史记录</h3>
+                <button id="close-history" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-700 hover:bg-gray-600">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <div id="history-list" class="max-h-60 overflow-y-auto space-y-2">
+                <!-- 历史记录将在这里动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let canvas, ctx;
+        let currentX = 0, currentY = 0;
+        let scale = 1;
+        let isDragging = false;
+        let lastX, lastY;
+        let offsetX = 0, offsetY = 0;
+        let lines = [];
+        let history = [];
+        let historyIndex = -1;
+        let isDeleting = false;
+        let isSelectingStartPoint = false;
+        let selectedDirection = null;
+        let lineWidth = 2;
+        let gridSize = 10; // 设置为10毫米一格
+        let showEndpointGuide = true;
+        // 设置画布边界范围为200m*200m（以毫米为单位）
+        let canvasMinX = -100000, canvasMaxX = 100000; // 200米范围（±100米）
+        let canvasMinY = -100000, canvasMaxY = 100000;
+        
+        // 初始化函数
+        function init() {
+            canvas = document.getElementById('drawing-canvas');
+            ctx = canvas.getContext('2d');
+            
+            // 设置Canvas大小
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            // 初始化事件监听
+            setupEventListeners();
+            
+            // 初始绘制
+            drawGrid();
+            updatePositionDisplay();
+        }
+        
+        // 调整Canvas大小
+        function resizeCanvas() {
+            const container = document.getElementById('canvas-container');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            
+            // 重绘所有内容
+            drawAll();
+        }
+        
+        // 设置事件监听
+        function setupEventListeners() {
+            // 数字键盘按钮
+            document.querySelectorAll('.num-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const input = document.getElementById('distance-input');
+                    const value = btn.dataset.value;
+                    
+                    if (value === '.') {
+                        // 检查是否已有小数点
+                        if (input.value.indexOf('.') === -1) {
+                            input.value += value;
+                        }
+                    } else {
+                        input.value += value;
+                    }
+                    
+                    // 确保值在有效范围内
+                    const numValue = parseFloat(input.value) || 0;
+                    if (numValue > 200000) {
+                        input.value = '200000';
+                    }
+                });
+            });
+            
+            // 清除按钮
+            document.getElementById('clear-btn').addEventListener('click', () => {
+                document.getElementById('distance-input').value = '';
+            });
+            
+            // 方向按钮
+            document.querySelectorAll('.direction-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (isDeleting || isSelectingStartPoint) return;
+                    
+                    // 移除其他方向按钮的选中状态
+                    document.querySelectorAll('.direction-btn').forEach(b => {
+                        b.classList.remove('bg-blue-700');
+                        b.classList.add('bg-primary');
+                    });
+                    
+                    // 添加当前按钮的选中状态
+                    btn.classList.remove('bg-primary');
+                    btn.classList.add('bg-blue-700');
+                    
+                    // 记录选中的方向
+                    selectedDirection = btn.dataset.direction;
+                });
+            });
+            
+            // 确认按钮
+            document.getElementById('confirm-btn').addEventListener('click', () => {
+                if (isDeleting || isSelectingStartPoint || !selectedDirection) return;
+                
+                const distance = parseInt(document.getElementById('distance-input').value) || 0;
+                if (distance > 0) {
+                    drawLine(selectedDirection, distance);
+                    
+                    // 清除选中的方向
+                    document.querySelectorAll('.direction-btn').forEach(btn => {
+                        btn.classList.remove('bg-blue-700');
+                        btn.classList.add('bg-primary');
+                    });
+                    selectedDirection = null;
+                    
+                    // 清空输入框
+                    document.getElementById('distance-input').value = '';
+                }
+            });
+            
+            // 删除按钮
+            document.getElementById('delete-btn').addEventListener('click', toggleDeleteMode);
+            
+            // 线宽滑块
+            const lineWidthSlider = document.getElementById('line-width');
+            const lineWidthValue = document.getElementById('line-width-value');
+            
+            lineWidthSlider.addEventListener('input', () => {
+                lineWidth = parseInt(lineWidthSlider.value);
+                lineWidthValue.textContent = `${lineWidth}px`;
+            });
+            
+            // 缩放按钮
+            document.getElementById('zoom-in').addEventListener('click', () => {
+                scale *= 1.2;
+                drawAll();
+            });
+            
+            document.getElementById('zoom-out').addEventListener('click', () => {
+                scale /= 1.2;
+                drawAll();
+            });
+            
+            document.getElementById('zoom-reset').addEventListener('click', () => {
+                scale = 1;
+                offsetX = 0;
+                offsetY = 0;
+                drawAll();
+            });
+            
+            // 选择起点按钮
+            document.getElementById('select-start-btn').addEventListener('click', toggleSelectStartPoint);
+            
+            // 历史记录按钮
+            document.getElementById('history-btn').addEventListener('click', toggleHistoryPanel);
+            document.getElementById('close-history').addEventListener('click', toggleHistoryPanel);
+            
+            // 保存和分享
+            document.getElementById('save-btn').addEventListener('click', saveDXF);
+            document.getElementById('share-btn').addEventListener('click', () => {
+                document.getElementById('share-menu').classList.remove('hidden');
+            });
+            
+            document.getElementById('close-share').addEventListener('click', () => {
+                document.getElementById('share-menu').classList.add('hidden');
+            });
+            
+            document.getElementById('save-dxf').addEventListener('click', () => {
+                saveDXF();
+                document.getElementById('share-menu').classList.add('hidden');
+            });
+            
+            document.getElementById('save-image').addEventListener('click', () => {
+                saveImage();
+                document.getElementById('share-menu').classList.add('hidden');
+            });
+            
+            document.getElementById('share-wechat').addEventListener('click', shareToWeChat);
+            
+            // 画布点击和拖拽
+            canvas.addEventListener('mousedown', handleCanvasMouseDown);
+            canvas.addEventListener('mousemove', drag);
+            canvas.addEventListener('mouseup', endDrag);
+            canvas.addEventListener('mouseleave', endDrag);
+            
+            // 触摸事件
+            canvas.addEventListener('touchstart', handleTouchStart);
+            canvas.addEventListener('touchmove', handleTouchMove);
+            canvas.addEventListener('touchend', handleTouchEnd);
+        }
+        
+        // 绘制线条
+        function drawLine(direction, distance) {
+            if (isSelectingStartPoint) return;
+            
+            const startX = currentX;
+            const startY = currentY;
+            let endX = startX;
+            let endY = startY;
+            
+            // 根据方向计算终点
+            switch (direction) {
+                case 'up':
+                    endY = startY - distance;
+                    break;
+                case 'down':
+                    endY = startY + distance;
+                    break;
+                case 'left':
+                    endX = startX - distance;
+                    break;
+                case 'right':
+                    endX = startX + distance;
+                    break;
+            }
+            
+            // 检查是否超出画布边界
+            endX = Math.max(canvasMinX, Math.min(canvasMaxX, endX));
+            endY = Math.max(canvasMinY, Math.min(canvasMaxY, endY));
+            
+            // 添加线条到数组
+            const newLine = {
+                startX,
+                startY,
+                endX,
+                endY,
+                width: lineWidth
+            };
+            lines.push(newLine);
+            
+            // 保存到历史记录
+            saveToHistory(newLine);
+            
+            // 更新当前位置
+            currentX = endX;
+            currentY = endY;
+            
+            // 重绘
+            drawAll();
+            updatePositionDisplay();
+        }
+        
+        // 保存到历史记录
+        function saveToHistory(line) {
+            // 如果当前不是最新状态，删除后面的历史
+            if (historyIndex < history.length - 1) {
+                history = history.slice(0, historyIndex + 1);
+            }
+            
+            // 添加新记录
+            history.push({
+                action: 'draw',
+                line: { ...line },
+                timestamp: new Date()
+            });
+            
+            // 更新索引
+            historyIndex = history.length - 1;
+            
+            // 限制历史记录数量
+            if (history.length > 50) {
+                history.shift();
+                historyIndex--;
+            }
+            
+            // 更新历史记录面板
+            updateHistoryPanel();
+        }
+        
+        // 绘制网格
+        function drawGrid() {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+            
+            const startX = offsetX % gridSize;
+            const startY = offsetY % gridSize;
+            
+            // 垂直线
+            for (let x = startX; x < canvas.width; x += gridSize * scale) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            
+            // 水平线
+            for (let y = startY; y < canvas.height; y += gridSize * scale) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+        }
+        
+        // 绘制所有内容
+        function drawAll() {
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 保存当前状态
+            ctx.save();
+            
+            // 应用变换
+            ctx.translate(offsetX, offsetY);
+            ctx.scale(scale, scale);
+            
+            // 绘制网格 - 已移除
+            
+            // 绘制所有线条
+            lines.forEach(line => {
+                ctx.beginPath();
+                ctx.moveTo(line.startX, line.startY);
+                ctx.lineTo(line.endX, line.endY);
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = line.width / scale;
+                ctx.stroke();
+                
+                // 绘制线条端点的红点指引
+                if (showEndpointGuide) {
+                    // 起点红点
+                    ctx.beginPath();
+                    ctx.arc(line.startX, line.startY, 3 / scale, 0, Math.PI * 2);
+                    ctx.fillStyle = '#EF4444';
+                    ctx.fill();
+                    
+                    // 终点红点
+                    ctx.beginPath();
+                    ctx.arc(line.endX, line.endY, 3 / scale, 0, Math.PI * 2);
+                    ctx.fillStyle = '#EF4444';
+                    ctx.fill();
+                }
+            });
+            
+            // 绘制当前位置标记
+            if (!isDeleting) {
+                ctx.beginPath();
+                ctx.arc(currentX, currentY, 5 / scale, 0, Math.PI * 2);
+                ctx.fillStyle = '#3B82F6';
+                ctx.fill();
+            }
+            
+            // 恢复状态
+            ctx.restore();
+        }
+        
+        // 更新位置显示
+        function updatePositionDisplay() {
+            document.getElementById('current-position').textContent = `X: ${currentX}, Y: ${currentY}`;
+        }
+        
+        // 切换删除模式
+        function toggleDeleteMode() {
+            isDeleting = !isDeleting;
+            const deleteBtn = document.getElementById('delete-btn');
+            
+            if (isDeleting) {
+                deleteBtn.classList.remove('bg-red-600', 'hover:bg-red-500');
+                deleteBtn.classList.add('bg-gray-500', 'hover:bg-gray-400');
+                deleteBtn.innerHTML = '<i class="fa fa-check text-xl mr-2"></i><span>确认</span>';
+                
+                // 添加点击事件以删除线条
+                canvas.addEventListener('click', deleteLineAtPosition);
+            } else {
+                deleteBtn.classList.remove('bg-gray-500', 'hover:bg-gray-400');
+                deleteBtn.classList.add('bg-red-600', 'hover:bg-red-500');
+                deleteBtn.innerHTML = '<i class="fa fa-trash text-xl mr-2"></i><span>删除</span>';
+                
+                // 移除点击事件
+                canvas.removeEventListener('click', deleteLineAtPosition);
+            }
+            
+            drawAll();
+        }
+        
+        // 删除指定位置的线条
+        function deleteLineAtPosition(e) {
+            if (!isDeleting) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = (e.clientX - rect.left - offsetX) / scale;
+            const mouseY = (e.clientY - rect.top - offsetY) / scale;
+            
+            // 检查是否点击了线条
+            const lineIndex = lines.findIndex(line => {
+                return isPointOnLine(mouseX, mouseY, line.startX, line.startY, line.endX, line.endY, 10 / scale);
+            });
+            
+            if (lineIndex !== -1) {
+                const deletedLine = lines[lineIndex];
+                lines.splice(lineIndex, 1);
+                
+                // 保存到历史记录
+                history.push({
+                    action: 'delete',
+                    line: { ...deletedLine },
+                    index: lineIndex,
+                    timestamp: new Date()
+                });
+                
+                // 更新索引
+                historyIndex = history.length - 1;
+                
+                // 限制历史记录数量
+                if (history.length > 50) {
+                    history.shift();
+                    historyIndex--;
+                }
+                
+                drawAll();
+                updateHistoryPanel();
+            }
+        }
+        
+        // 检查点是否在线段附近
+        function isPointOnLine(px, py, x1, y1, x2, y2, tolerance) {
+            // 计算点到线段的距离
+            const A = px - x1;
+            const B = py - y1;
+            const C = x2 - x1;
+            const D = y2 - y1;
+            
+            const dot = A * C + B * D;
+            const lenSq = C * C + D * D;
+            let param = -1;
+            
+            if (lenSq !== 0) param = dot / lenSq;
+            
+            let xx, yy;
+            
+            if (param < 0) {
+                xx = x1;
+                yy = y1;
+            } else if (param > 1) {
+                xx = x2;
+                yy = y2;
+            } else {
+                xx = x1 + param * C;
+                yy = y1 + param * D;
+            }
+            
+            const dx = px - xx;
+            const dy = py - yy;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            return distance < tolerance;
+        }
+        
+        // 处理画布鼠标按下事件
+        function handleCanvasMouseDown(e) {
+            if (isSelectingStartPoint) {
+                // 选择起点模式
+                const rect = canvas.getBoundingClientRect();
+                let newX = (e.clientX - rect.left - offsetX) / scale;
+                let newY = (e.clientY - rect.top - offsetY) / scale;
+                
+                // 自动吸附到最近的网格交叉点
+                newX = Math.round(newX / gridSize) * gridSize;
+                newY = Math.round(newY / gridSize) * gridSize;
+                
+                // 检查是否在画布范围内
+                if (newX >= canvasMinX && newX <= canvasMaxX && newY >= canvasMinY && newY <= canvasMaxY) {
+                    // 保存当前位置到历史记录
+                    history.push({
+                        action: 'move',
+                        fromX: currentX,
+                        fromY: currentY,
+                        toX: newX,
+                        toY: newY,
+                        timestamp: new Date()
+                    });
+                    
+                    // 更新索引
+                    historyIndex = history.length - 1;
+                    
+                    // 限制历史记录数量
+                    if (history.length > 50) {
+                        history.shift();
+                        historyIndex--;
+                    }
+                    
+                    // 更新当前位置
+                    currentX = newX;
+                    currentY = newY;
+                    
+                    // 重绘和更新
+                    drawAll();
+                    updatePositionDisplay();
+                    updateHistoryPanel();
+                    
+                    // 退出选择起点模式
+                    toggleSelectStartPoint();
+                }
+            } else if (!isDeleting) {
+                // 普通拖拽模式
+                startDrag(e);
+            }
+        }
+        
+        // 拖拽开始
+        function startDrag(e) {
+            isDragging = true;
+            lastX = e.clientX;
+            lastY = e.clientY;
+            canvas.style.cursor = 'grabbing';
+        }
+        
+        // 拖拽中
+        function drag(e) {
+            if (!isDragging || isDeleting) return;
+            
+            const deltaX = e.clientX - lastX;
+            const deltaY = e.clientY - lastY;
+            
+            offsetX += deltaX;
+            offsetY += deltaY;
+            
+            lastX = e.clientX;
+            lastY = e.clientY;
+            
+            drawAll();
+        }
+        
+        // 拖拽结束
+        function endDrag() {
+            isDragging = false;
+            canvas.style.cursor = 'grab';
+        }
+        
+        // 处理触摸开始
+        function handleTouchStart(e) {
+            e.preventDefault();
+            if (e.touches.length === 1) {
+                const touch = e.touches[0];
+                
+                if (isSelectingStartPoint) {
+                    // 选择起点模式
+                    const rect = canvas.getBoundingClientRect();
+                    let newX = (touch.clientX - rect.left - offsetX) / scale;
+                    let newY = (touch.clientY - rect.top - offsetY) / scale;
+                    
+                    // 自动吸附到最近的网格交叉点
+                    newX = Math.round(newX / gridSize) * gridSize;
+                    newY = Math.round(newY / gridSize) * gridSize;
+                    
+                    // 检查是否在画布范围内
+                    if (newX >= canvasMinX && newX <= canvasMaxX && newY >= canvasMinY && newY <= canvasMaxY) {
+                        // 保存当前位置到历史记录
+                        history.push({
+                            action: 'move',
+                            fromX: currentX,
+                            fromY: currentY,
+                            toX: newX,
+                            toY: newY,
+                            timestamp: new Date()
+                        });
+                        
+                        // 更新索引
+                        historyIndex = history.length - 1;
+                        
+                        // 限制历史记录数量
+                        if (history.length > 50) {
+                            history.shift();
+                            historyIndex--;
+                        }
+                        
+                        // 更新当前位置
+                        currentX = newX;
+                        currentY = newY;
+                        
+                        // 重绘和更新
+                        drawAll();
+                        updatePositionDisplay();
+                        updateHistoryPanel();
+                        
+                        // 退出选择起点模式
+                        toggleSelectStartPoint();
+                    }
+                } else {
+                    // 普通模式，转换为鼠标事件
+                    const mouseEvent = new MouseEvent('mousedown', {
+                        clientX: touch.clientX,
+                        clientY: touch.clientY
+                    });
+                    canvas.dispatchEvent(mouseEvent);
+                }
+            }
+        }
+        
+        // 处理触摸移动
+        function handleTouchMove(e) {
+            e.preventDefault();
+            if (e.touches.length === 1) {
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousemove', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                canvas.dispatchEvent(mouseEvent);
+            }
+        }
+        
+        // 处理触摸结束
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            const mouseEvent = new MouseEvent('mouseup', {});
+            canvas.dispatchEvent(mouseEvent);
+        }
+        
+        // 保存为DXF文件
+        function saveDXF() {
+            try {
+                // 创建DXF文档
+                const dxf = new DXF.Document();
+                
+                // 添加所有线条
+                lines.forEach(line => {
+                    dxf.addLine(
+                        new DXF.Point(line.startX, line.startY, 0),
+                        new DXF.Point(line.endX, line.endY, 0),
+                        {
+                            lineweight: line.width * 10  // DXF线宽单位为0.01mm
+                        }
+                    );
+                });
+                
+                // 生成DXF内容
+                const dxfContent = dxf.toDxfString();
+                
+                // 创建Blob并下载
+                const blob = new Blob([dxfContent], { type: 'application/dxf' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'drawing.dxf';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                showToast('DXF文件已保存');
+            } catch (error) {
+                console.error('保存DXF失败:', error);
+                showToast('保存失败，请重试');
+            }
+        }
+        
+        // 保存为图片
+        function saveImage() {
+            try {
+                // 创建临时Canvas以获取实际绘图
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                
+                // 计算合适的尺寸
+                const margin = 50;
+                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                
+                lines.forEach(line => {
+                    minX = Math.min(minX, line.startX, line.endX);
+                    maxX = Math.max(maxX, line.startX, line.endX);
+                    minY = Math.min(minY, line.startY, line.endY);
+                    maxY = Math.max(maxY, line.startY, line.endY);
+                });
+                
+                // 如果没有线条，使用默认尺寸
+                if (minX === Infinity) {
+                    minX = -100;
+                    maxX = 100;
+                    minY = -100;
+                    maxY = 100;
+                }
+                
+                const width = maxX - minX + margin * 2;
+                const height = maxY - minY + margin * 2;
+                
+                tempCanvas.width = width;
+                tempCanvas.height = height;
+                
+                // 绘制白色背景
+                tempCtx.fillStyle = 'white';
+                tempCtx.fillRect(0, 0, width, height);
+                
+                // 绘制线条
+                lines.forEach(line => {
+                    tempCtx.beginPath();
+                    tempCtx.moveTo(line.startX - minX + margin, line.startY - minY + margin);
+                    tempCtx.lineTo(line.endX - minX + margin, line.endY - minY + margin);
+                    tempCtx.strokeStyle = 'black';
+                    tempCtx.lineWidth = line.width;
+                    tempCtx.stroke();
+                });
+                
+                // 下载图片
+                tempCanvas.toBlob(blob => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'drawing.png';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    showToast('图片已保存');
+                });
+            } catch (error) {
+                console.error('保存图片失败:', error);
+                showToast('保存失败，请重试');
+            }
+        }
+        
+        // 分享到微信
+        function shareToWeChat() {
+            // 在实际应用中，这里需要集成微信分享API
+            // 由于这是一个前端演示，我们只显示一个提示
+            showToast('微信分享功能需要在实际应用中集成微信API');
+        }
+        
+        // 显示提示信息
+        function showToast(message) {
+            // 创建提示元素
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-dark bg-opacity-80 text-white px-4 py-2 rounded-lg z-30';
+            toast.textContent = message;
+            
+            // 添加到页面
+            document.body.appendChild(toast);
+            
+            // 2秒后移除
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'transition-opacity', 'duration-300');
+                setTimeout(() => {
+                    document.body.removeChild(toast);
+                }, 300);
+            }, 2000);
+        }
+        
+        // 初始化应用
+        window.addEventListener('load', init);
+        
+        // 切换历史记录面板
+        function toggleHistoryPanel() {
+            const historyPanel = document.getElementById('history-panel');
+            historyPanel.classList.toggle('hidden');
+            
+            if (!historyPanel.classList.contains('hidden')) {
+                updateHistoryPanel();
+            }
+        }
+        
+        // 更新历史记录面板
+        function updateHistoryPanel() {
+            const historyList = document.getElementById('history-list');
+            historyList.innerHTML = '';
+            
+            if (history.length === 0) {
+                historyList.innerHTML = '<div class="text-gray-400 text-center py-4">暂无历史记录</div>';
+                return;
+            }
+            
+            // 倒序显示历史记录（最新的在前面）
+            for (let i = history.length - 1; i >= 0; i--) {
+                const record = history[i];
+                const isCurrent = i === historyIndex;
+                
+                const recordItem = document.createElement('div');
+                recordItem.className = `flex items-center justify-between p-2 rounded-lg ${isCurrent ? 'bg-blue-900 bg-opacity-50' : 'bg-gray-800'}`;
+                
+                let actionText;
+                if (record.action === 'draw') {
+                    actionText = '绘制线条';
+                } else if (record.action === 'delete') {
+                    actionText = '删除线条';
+                } else if (record.action === 'move') {
+                    actionText = '移动起点';
+                }
+                const timeText = formatTime(record.timestamp);
+                
+                recordItem.innerHTML = `
+                    <div>
+                        <div class="font-medium">${actionText}</div>
+                        <div class="text-xs text-gray-400">${timeText}</div>
+                    </div>
+                    <button class="history-jump-btn px-3 py-1 rounded bg-primary hover:bg-blue-600 text-sm" data-index="${i}">
+                        跳转
+                    </button>
+                `;
+                
+                historyList.appendChild(recordItem);
+            }
+            
+            // 添加跳转按钮事件
+            document.querySelectorAll('.history-jump-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const index = parseInt(btn.dataset.index);
+                    jumpToHistory(index);
+                });
+            });
+        }
+        
+        // 跳转到指定历史记录
+        function jumpToHistory(targetIndex) {
+            // 如果目标索引大于当前索引，执行重做
+            while (historyIndex < targetIndex) {
+                redo();
+            }
+            
+            // 如果目标索引小于当前索引，执行撤销
+            while (historyIndex > targetIndex) {
+                undo();
+            }
+            
+            // 关闭历史记录面板
+            toggleHistoryPanel();
+        }
+        
+        // 撤销
+        function undo() {
+            if (historyIndex < 0) return;
+            
+            const record = history[historyIndex];
+            
+            if (record.action === 'draw') {
+                // 撤销绘制操作
+                lines.pop();
+            } else if (record.action === 'delete') {
+                // 撤销删除操作
+                lines.splice(record.index, 0, record.line);
+            } else if (record.action === 'move') {
+                // 撤销移动操作
+                currentX = record.fromX;
+                currentY = record.fromY;
+            }
+            
+            historyIndex--;
+            updateCanvasFromHistory();
+        }
+        
+        // 重做
+        function redo() {
+            if (historyIndex >= history.length - 1) return;
+            
+            historyIndex++;
+            const record = history[historyIndex];
+            
+            if (record.action === 'draw') {
+                // 重做绘制操作
+                lines.push(record.line);
+            } else if (record.action === 'delete') {
+                // 重做删除操作
+                lines.splice(record.index, 1);
+            } else if (record.action === 'move') {
+                // 重做移动操作
+                currentX = record.toX;
+                currentY = record.toY;
+            }
+            
+            updateCanvasFromHistory();
+        }
+        
+        // 根据历史记录更新画布
+        function updateCanvasFromHistory() {
+            // 更新当前位置为最后一条线的终点
+            if (lines.length > 0) {
+                const lastLine = lines[lines.length - 1];
+                currentX = lastLine.endX;
+                currentY = lastLine.endY;
+            } else {
+                currentX = 0;
+                currentY = 0;
+            }
+            
+            drawAll();
+            updatePositionDisplay();
+        }
+        
+        // 切换选择起点模式
+        function toggleSelectStartPoint() {
+            isSelectingStartPoint = !isSelectingStartPoint;
+            const selectBtn = document.getElementById('select-start-btn');
+            
+            if (isSelectingStartPoint) {
+                selectBtn.classList.remove('bg-accent', 'hover:bg-yellow-500');
+                selectBtn.classList.add('bg-green-500', 'hover:bg-green-400');
+                selectBtn.innerHTML = '<i class="fa fa-check text-xl mr-2"></i><span>确认选择</span>';
+                canvas.style.cursor = 'crosshair';
+                
+                // 临时禁用删除模式
+                if (isDeleting) {
+                    toggleDeleteMode();
+                }
+            } else {
+                selectBtn.classList.remove('bg-green-500', 'hover:bg-green-400');
+                selectBtn.classList.add('bg-accent', 'hover:bg-yellow-500');
+                selectBtn.innerHTML = '<i class="fa fa-crosshairs text-xl mr-2"></i><span>选择起点</span>';
+                canvas.style.cursor = 'grab';
+            }
+            
+            drawAll();
+        }
+        
+        // 格式化时间
+        function formatTime(date) {
+            const now = new Date();
+            const diff = now - date;
+            
+            // 如果是今天
+            if (date.toDateString() === now.toDateString()) {
+                return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+            }
+            
+            // 如果是昨天
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            if (date.toDateString() === yesterday.toDateString()) {
+                return '昨天 ' + date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+            }
+            
+            // 其他情况显示完整日期
+            return date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' }) + ' ' + 
+                   date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        }
+    </script>
+</body>
+</html>
