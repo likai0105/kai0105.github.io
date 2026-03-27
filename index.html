@@ -839,7 +839,7 @@ ${lineweight}`);
             updateHistoryPanel();
         }
         
-        // 绘制所有内容（修改：线段长度标注样式）
+        // 绘制所有内容（核心修改：数字在线条上方悬浮显示）
         function drawAll() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.save();
@@ -869,7 +869,7 @@ ${lineweight}`);
                     ctx.fill();
                 }
 
-                // 修改：绘制线段长度（平行于线条、红色、无单位）
+                // 核心修改：数字在线条上方悬浮显示
                 if (showLineLength && line.length) {
                     const midX = (line.startX + line.endX) / 2;
                     const midY = (line.startY + line.endY) / 2;
@@ -879,11 +879,26 @@ ${lineweight}`);
                     const dy = line.endY - line.startY;
                     const angle = Math.atan2(dy, dx);
                     
+                    // 计算悬浮偏移量（根据参考图比例）
+                    // 偏移距离：基于缩放比例的25像素（在线条上方）
+                    const offsetDistance = 25 / scale;
+                    let textX = midX;
+                    let textY = midY;
+                    
+                    // 根据线条方向计算上方偏移
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        // 水平线条：向上偏移
+                        textY = midY - offsetDistance;
+                    } else {
+                        // 垂直线条：向左偏移（视觉上的上方）
+                        textX = midX - offsetDistance;
+                    }
+                    
                     // 保存当前状态
                     ctx.save();
                     
-                    // 平移到中点并旋转文本使其平行于线条
-                    ctx.translate(midX, midY);
+                    // 平移到偏移后的位置并旋转文本使其平行于线条
+                    ctx.translate(textX, textY);
                     ctx.rotate(angle);
                     
                     // 设置文本样式（红色、无单位）
@@ -1153,16 +1168,31 @@ ${lineweight}`);
                     tempCtx.lineWidth = line.width;
                     tempCtx.stroke();
                     
-                    // 修改：保存图片时的长度显示样式
+                    // 修改：保存图片时的长度显示样式（悬浮在线条上方）
                     if (showLineLength && line.length) {
                         const midX = (line.startX + line.endX) / 2;
                         const midY = (line.startY + line.endY) / 2;
+                        
+                        // 计算线条角度
                         const dx = line.endX - line.startX;
                         const dy = line.endY - line.startY;
                         const angle = Math.atan2(dy, dx);
                         
+                        // 计算悬浮偏移量
+                        const offsetDistance = 25;
+                        let textX = midX;
+                        let textY = midY;
+                        
+                        if (Math.abs(dx) > Math.abs(dy)) {
+                            // 水平线条：向上偏移
+                            textY = midY - offsetDistance;
+                        } else {
+                            // 垂直线条：向左偏移
+                            textX = midX - offsetDistance;
+                        }
+                        
                         tempCtx.save();
-                        tempCtx.translate(midX - minX + margin, midY - minY + margin);
+                        tempCtx.translate(textX - minX + margin, textY - minY + margin);
                         tempCtx.rotate(angle);
                         tempCtx.font = '24px Arial';
                         tempCtx.fillStyle = '#ff0000';
