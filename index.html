@@ -3,14 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DXF绘图工具</title>
+    <title>DXF绘图工具（图层版）</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <script>
-        // 简化版DXF生成器（修复下载失败问题）
+        // 简化版DXF生成器（支持图层和线条样式）
         class DXFDocument {
             constructor() {
                 this.lines = [];
+                this.texts = []; // 新增：存储文字
                 this.header = `0
 SECTION
 2
@@ -30,7 +31,7 @@ TABLE
 2
 LTYPE
 70
-1
+2
 0
 LTYPE
 2
@@ -46,23 +47,109 @@ Solid line
 40
 0.0
 0
+LTYPE
+2
+DASHED
+70
+0
+3
+Dashed line
+72
+65
+73
+2
+40
+0.0
+49
+10.0
+49
+-5.0
+0
 ENDTAB
 0
 TABLE
 2
 LAYER
 70
-1
+5
 0
 LAYER
 2
-0
+Layer1
 70
 0
 62
 7
 6
 CONTINUOUS
+0
+LAYER
+2
+Layer2
+70
+0
+62
+7
+6
+CONTINUOUS
+0
+LAYER
+2
+Layer3
+70
+0
+62
+7
+6
+CONTINUOUS
+0
+LAYER
+2
+Layer4
+70
+0
+62
+7
+6
+CONTINUOUS
+0
+LAYER
+2
+Layer5
+70
+0
+62
+7
+6
+CONTINUOUS
+0
+ENDTAB
+0
+TABLE
+2
+STYLE
+70
+0
+0
+STYLE
+2
+STANDARD
+70
+0
+40
+0.0
+41
+1.0
+50
+0.0
+71
+0
+42
+0.25
+3
+txt.shx
+4
+0
 0
 ENDTAB
 0
@@ -112,11 +199,18 @@ ENDSEC
 EOF`;
             }
 
-            addLine(x1, y1, x2, y2, lineweight = 20) {
+            addLine(x1, y1, x2, y2, lineweight = 20, layer = "Layer1", isDashed = false, isBold = false, color = 7) {
+                const linetype = isDashed ? "DASHED" : "CONTINUOUS";
+                const lineweightVal = isBold ? 50 : lineweight;
+                
                 this.lines.push(`0
 LINE
 8
-0
+${layer}
+6
+${linetype}
+62
+${color}
 10
 ${x1}
 20
@@ -130,11 +224,31 @@ ${y2}
 31
 0.0
 370
-${lineweight}`);
+${lineweightVal}`);
+            }
+
+            // 新增：添加文字到DXF
+            addText(text, x, y, layer = "Layer1", height = 20, color = 7) {
+                this.texts.push(`0
+TEXT
+8
+${layer}
+62
+${color}
+10
+${x}
+20
+${y}
+30
+0.0
+40
+${height}
+1
+${text}`);
             }
 
             toDxfString() {
-                return this.header + this.lines.join('\n') + this.footer;
+                return this.header + this.lines.join('\n') + this.texts.join('\n') + this.footer;
             }
         }
     </script>
@@ -201,11 +315,48 @@ ${lineweight}`);
             min-height: unset !important;
         }
 
+        /* 优化：退位键改为向左箭头样式 */
+        .backspace-btn {
+            @apply glass-effect rounded-full flex items-center justify-center text-xl transition-all duration-200 hover:bg-white/15 active:scale-95 !important;
+            width: 50px !important;
+            height: 50px !important;
+            font-size: 1.25rem !important;
+            padding: 0 !important;
+            min-width: unset !important;
+            min-height: unset !important;
+            background: rgba(255, 255, 255, 0.12) !important;
+        }
+        /* 向左箭头样式 */
+        .backspace-btn::before {
+            content: "\f060";
+            font-family: 'FontAwesome';
+            font-size: 18px;
+        }
+
+        /* 小数点按键样式（匹配苹果拨号UI） */
+        .dot-btn {
+            @apply glass-effect rounded-full flex items-center justify-center text-xl transition-all duration-200 hover:bg-white/15 active:scale-95 !important;
+            width: 50px !important;
+            height: 50px !important;
+            font-size: 1.5rem !important;
+            padding: 0 !important;
+            min-width: unset !important;
+            min-height: unset !important;
+        }
+
         /* 方向按钮 - 圆形 */
         .direction-btn {
             @apply glass-effect rounded-full flex items-center justify-center btn-hover !important;
             width: 50px !important;
             height: 50px !important;
+        }
+
+        /* 颜色选择按钮样式 */
+        .color-btn {
+            @apply w-8 h-8 rounded-full cursor-pointer transition-all duration-200 hover:scale-110 active:scale-95 border-2 border-transparent;
+        }
+        .color-btn.active {
+            @apply border-white;
         }
 
         /* 保留原有界面的核心样式 */
@@ -221,8 +372,17 @@ ${lineweight}`);
             @apply absolute right-4 top-1/2 transform -translate-y-1/2 z-10 rounded-2xl p-4 w-40 panel-shadow glass-effect;
         }
 
+        /* 线条样式按钮 */
+        .style-btn {
+            @apply glass-effect rounded-lg p-2 flex items-center justify-center btn-hover w-full mb-2;
+        }
+        
+        .style-btn.active {
+            @apply bg-red-500/20 border border-red-500/30;
+        }
+
         /* 通用按钮样式 - 磨砂玻璃 */
-        button:not(.num-btn):not(.direction-btn) {
+        button:not(.num-btn):not(.direction-btn):not(.backspace-btn):not(.color-btn):not(.dot-btn) {
             @apply glass-effect !important;
         }
 
@@ -234,6 +394,60 @@ ${lineweight}`);
         /* 功能按钮样式 */
         .function-btn {
             @apply glass-effect rounded-lg p-3 flex items-center justify-center btn-hover w-full;
+        }
+
+        /* 文字编辑弹窗样式 */
+        .text-modal {
+            @apply fixed inset-0 bg-black/70 z-50 flex items-center justify-center hidden;
+        }
+        
+        .text-modal-content {
+            @apply glass-effect rounded-2xl p-6 w-11/12 max-w-md panel-shadow;
+        }
+
+        /* 图层管理样式（集成到右侧） */
+        .layer-management {
+            @apply space-y-2 mb-4;
+        }
+        .layer-item-inline {
+            @apply flex items-center justify-between p-1 rounded-lg glass-effect mb-1;
+        }
+        .layer-name-inline {
+            @apply bg-transparent border-b border-white/20 focus:border-white/50 outline-none text-white w-16 text-center text-sm;
+        }
+        .layer-toggle-inline {
+            @apply w-8 h-4 rounded-full glass-effect relative transition-all duration-200 cursor-pointer;
+        }
+        .layer-toggle-inline.active {
+            @apply bg-red-500/30;
+        }
+        .layer-toggle-slider-inline {
+            @apply absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white transition-all duration-200;
+        }
+        .layer-toggle-inline.active .layer-toggle-slider-inline {
+            @apply left-4;
+        }
+        
+        /* 文字位置选择提示 */
+        .text-position-hint {
+            @apply fixed inset-0 z-40 flex items-center justify-center hidden;
+            background: rgba(0, 0, 0, 0.6);
+        }
+        .text-position-hint-content {
+            @apply glass-effect rounded-xl p-6 text-center;
+        }
+
+        /* 新增：文字编辑悬浮工具栏（微信截图风格） */
+        .text-edit-toolbar {
+            @apply fixed z-40 hidden bg-black/70 rounded-lg p-2 flex space-x-2;
+        }
+        .text-edit-btn {
+            @apply w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-all;
+        }
+
+        /* 新增：恢复缓存提示 */
+        .restore-hint {
+            @apply fixed top-20 left-1/2 transform -translate-x-1/2 z-20 glass-effect rounded-lg p-4 panel-shadow flex items-center space-x-3;
         }
     </style>
     <script>
@@ -253,7 +467,7 @@ ${lineweight}`);
 </head>
 <body>
     <div class="flex flex-col h-screen relative">
-        <!-- 顶部工具栏 - 保留原有样式 -->
+        <!-- 顶部工具栏 -->
         <div class="top-toolbar">
             <button id="zoom-in" class="w-10 h-10 flex items-center justify-center rounded-full glass-effect btn-hover">
                 <i class="fa fa-search-plus text-lg"></i>
@@ -274,14 +488,18 @@ ${lineweight}`);
             <button id="share-btn" class="w-10 h-10 flex items-center justify-center rounded-full glass-effect btn-hover">
                 <i class="fa fa-share-alt text-lg"></i>
             </button>
+            <!-- 新增：清除缓存按钮 -->
+            <button id="clear-cache-btn" class="w-10 h-10 flex items-center justify-center rounded-full glass-effect btn-hover" title="清除缓存">
+                <i class="fa fa-trash-o text-lg"></i>
+            </button>
         </div>
         
-        <!-- 主画布区域 - 保留原有样式 -->
+        <!-- 主画布区域 -->
         <div id="canvas-container" class="canvas-container flex-1 relative overflow-hidden">
             <canvas id="drawing-canvas" class="absolute top-0 left-0"></canvas>
         </div>
         
-        <!-- 左侧控制面板 - 调整数字键盘布局 -->
+        <!-- 左侧控制面板 -->
         <div class="left-panel">
             <div class="mb-4">
                 <label class="block text-xs text-gray-300 mb-1">长度 (mm)</label>
@@ -290,7 +508,7 @@ ${lineweight}`);
                     <div class="absolute -right-2 -top-2 glass-effect text-xs px-2 py-1 rounded-full">mm</div>
                 </div>
                 
-                <!-- 数字输入键盘 - 苹果拨号键布局 (圆形) -->
+                <!-- 数字输入键盘 - 苹果风格（00改为小数点，删除键改为向左箭头） -->
                 <div class="mt-3 grid grid-cols-3 gap-2 justify-items-center">
                     <button class="num-btn" data-value="1">1</button>
                     <button class="num-btn" data-value="2">2</button>
@@ -301,14 +519,29 @@ ${lineweight}`);
                     <button class="num-btn" data-value="7">7</button>
                     <button class="num-btn" data-value="8">8</button>
                     <button class="num-btn" data-value="9">9</button>
-                    <button class="num-btn" data-value="00">00</button>
+                    <!-- 修改：00 → 小数点按键 -->
+                    <button class="dot-btn" data-value=".">.</button>
                     <button class="num-btn" data-value="0">0</button>
-                    <button class="num-btn" data-value=".">.</button>
+                    <!-- 优化：退位键改为向左箭头样式 -->
+                    <button class="backspace-btn" id="backspace-btn"></button>
                 </div>
                 
-                <!-- 清除按钮 - 独立出来 -->
+                <!-- 清除按钮 -->
                 <button id="clear-btn" class="mt-3">
                     <i class="fa fa-times mr-1"></i>清除
+                </button>
+            </div>
+            
+            <!-- 修改：线条样式只保留直线和虚线 -->
+            <div class="mb-3">
+                <label class="block text-xs text-gray-300 mb-2">线条样式</label>
+                <button id="style-solid" class="style-btn active">
+                    <i class="fa fa-minus text-xl mr-2"></i>
+                    <span>直线</span>
+                </button>
+                <button id="style-dashed" class="style-btn">
+                    <i class="fa fa-minus text-xl mr-2"></i>
+                    <span>虚线</span>
                 </button>
             </div>
             
@@ -332,7 +565,7 @@ ${lineweight}`);
             </div>
         </div>
         
-        <!-- 右侧控制面板 - 方向键改为圆形 -->
+        <!-- 右侧控制面板 -->
         <div class="right-panel">
             <div class="mb-4">
                 <button id="select-start-btn" class="function-btn">
@@ -340,11 +573,68 @@ ${lineweight}`);
                     <span>选择起点</span>
                 </button>
                 
-                <!-- 显示长度按钮 - 移到选择起点按钮下方 -->
+                <!-- 显示长度按钮 -->
                 <button id="toggle-length-btn" class="function-btn mt-3">
                     <i class="fa fa-font text-xl mr-2"></i>
                     <span>显示长度</span>
                 </button>
+                
+                <!-- 新增：添加文字按钮 -->
+                <button id="add-text-btn" class="function-btn mt-3">
+                    <i class="fa fa-font text-xl mr-2"></i>
+                    <span>添加文字</span>
+                </button>
+            </div>
+            
+            <!-- 修改：图层管理集成到右侧 -->
+            <div class="mb-4">
+                <label class="block text-xs text-gray-300 mb-2 text-center">图层管理</label>
+                <!-- 当前图层选择 -->
+                <select id="current-layer" class="w-full glass-effect rounded-lg px-3 py-2 input-focus text-center mb-2">
+                    <option value="1">图层 1</option>
+                    <option value="2">图层 2</option>
+                    <option value="3">图层 3</option>
+                    <option value="4">图层 4</option>
+                    <option value="5">图层 5</option>
+                </select>
+                <!-- 图层列表（集成版） -->
+                <div class="layer-management" id="layer-list-inline">
+                    <!-- 图层1 -->
+                    <div class="layer-item-inline">
+                        <input type="text" class="layer-name-inline" data-layer="1" value="图层 1">
+                        <div class="layer-toggle-inline active" data-layer="1">
+                            <div class="layer-toggle-slider-inline"></div>
+                        </div>
+                    </div>
+                    <!-- 图层2 -->
+                    <div class="layer-item-inline">
+                        <input type="text" class="layer-name-inline" data-layer="2" value="图层 2">
+                        <div class="layer-toggle-inline active" data-layer="2">
+                            <div class="layer-toggle-slider-inline"></div>
+                        </div>
+                    </div>
+                    <!-- 图层3 -->
+                    <div class="layer-item-inline">
+                        <input type="text" class="layer-name-inline" data-layer="3" value="图层 3">
+                        <div class="layer-toggle-inline active" data-layer="3">
+                            <div class="layer-toggle-slider-inline"></div>
+                        </div>
+                    </div>
+                    <!-- 图层4 -->
+                    <div class="layer-item-inline">
+                        <input type="text" class="layer-name-inline" data-layer="4" value="图层 4">
+                        <div class="layer-toggle-inline active" data-layer="4">
+                            <div class="layer-toggle-slider-inline"></div>
+                        </div>
+                    </div>
+                    <!-- 图层5 -->
+                    <div class="layer-item-inline">
+                        <input type="text" class="layer-name-inline" data-layer="5" value="图层 5">
+                        <div class="layer-toggle-inline active" data-layer="5">
+                            <div class="layer-toggle-slider-inline"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <div class="mb-6">
@@ -367,15 +657,83 @@ ${lineweight}`);
                 </div>
             </div>
             
+            <!-- 修改：坐标功能改为颜色选择按钮 -->
             <div>
-                <label class="block text-xs text-gray-300 mb-1">坐标</label>
-                <div class="glass-effect rounded-lg p-2 text-xs text-center">
-                    <div id="current-position" class="text-gray-200">X: 0, Y: 0</div>
+                <label class="block text-xs text-gray-300 mb-2 text-center">线条颜色</label>
+                <div class="flex justify-center space-x-2 mb-2">
+                    <div class="color-btn active" style="background-color: white;" data-color="white"></div>
+                    <div class="color-btn" style="background-color: red;" data-color="red"></div>
+                    <div class="color-btn" style="background-color: blue;" data-color="blue"></div>
+                    <div class="color-btn" style="background-color: green;" data-color="green"></div>
+                    <div class="color-btn" style="background-color: yellow;" data-color="yellow"></div>
                 </div>
             </div>
         </div>
         
-        <!-- 分享菜单 (默认隐藏) -->
+        <!-- 新增：文字位置选择提示 -->
+        <div id="text-position-hint" class="text-position-hint">
+            <div class="text-position-hint-content">
+                <i class="fa fa-hand-pointer-o text-4xl mb-3 text-red-500"></i>
+                <h3 class="text-xl mb-2">选择文字位置</h3>
+                <p class="text-gray-300">请在画布上点击想要放置文字的位置</p>
+            </div>
+        </div>
+        
+        <!-- 新增：文字编辑弹窗 -->
+        <div id="text-modal" class="text-modal">
+            <div class="text-modal-content">
+                <h3 class="text-lg font-semibold mb-4 text-center text-gray-100">添加文字</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs text-gray-300 mb-1">文字内容</label>
+                        <input type="text" id="text-content" class="w-full glass-effect rounded-lg px-3 py-2 input-focus" placeholder="请输入文字">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-300 mb-1">文字大小 (mm)</label>
+                        <input type="number" id="text-size" class="w-full glass-effect rounded-lg px-3 py-2 input-focus" value="20" min="5" max="100">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-300 mb-1">文字颜色</label>
+                        <select id="text-color" class="w-full glass-effect rounded-lg px-3 py-2 input-focus">
+                            <option value="white" selected>白色</option>
+                            <option value="red">红色</option>
+                            <option value="blue">蓝色</option>
+                            <option value="green">绿色</option>
+                            <option value="yellow">黄色</option>
+                        </select>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button id="confirm-text-btn" class="function-btn flex-1">
+                            <i class="fa fa-check text-xl mr-2"></i>
+                            <span>确认添加</span>
+                        </button>
+                        <button id="cancel-text-btn" class="function-btn flex-1">
+                            <i class="fa fa-times text-xl mr-2"></i>
+                            <span>取消</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 新增：文字编辑悬浮工具栏（微信截图风格） -->
+        <div id="text-edit-toolbar" class="text-edit-toolbar">
+            <button id="text-edit-btn" class="text-edit-btn" title="编辑文字"><i class="fa fa-pencil"></i></button>
+            <button id="text-delete-btn" class="text-edit-btn" title="删除文字"><i class="fa fa-trash"></i></button>
+        </div>
+
+        <!-- 新增：恢复缓存提示框 -->
+        <div id="restore-hint" class="restore-hint hidden">
+            <i class="fa fa-history text-xl text-red-500"></i>
+            <div>
+                <div class="font-medium">检测到上次未完成的绘图</div>
+                <div class="text-sm text-gray-300">是否恢复继续编辑？</div>
+            </div>
+            <button id="restore-yes" class="px-3 py-1 rounded glass-effect btn-hover">恢复</button>
+            <button id="restore-no" class="px-3 py-1 rounded glass-effect btn-hover">放弃</button>
+        </div>
+        
+        <!-- 分享菜单 -->
         <div id="share-menu" class="fixed inset-0 bg-black/50 z-20 hidden flex items-center justify-center">
             <div class="glass-effect rounded-2xl p-6 w-80 panel-shadow">
                 <h3 class="text-lg font-semibold mb-4 text-center text-gray-100">分享或保存</h3>
@@ -400,7 +758,7 @@ ${lineweight}`);
             </div>
         </div>
         
-        <!-- 历史记录面板 (默认隐藏) -->
+        <!-- 历史记录面板 -->
         <div id="history-panel" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-10 control-panel rounded-2xl p-4 w-3/4 max-w-md panel-shadow hidden">
             <div class="flex justify-between items-center mb-3">
                 <h3 class="text-lg font-semibold text-gray-100">历史记录</h3>
@@ -415,28 +773,55 @@ ${lineweight}`);
     </div>
 
     <script>
-        // 全局变量 - 保留原有逻辑
+        // 全局变量
         let canvas, ctx;
         let currentX = 0, currentY = 0;
         let scale = 1;
         let isDragging = false;
         let lastX, lastY;
         let offsetX = 0, offsetY = 0;
-        let lines = [];
+        let lines = []; // 修改：每条线增加图层、样式属性
+        let texts = []; // 新增：存储文字对象
         let history = [];
         let historyIndex = -1;
         let isDeleting = false;
         let isSelectingStartPoint = false;
         let selectedDirection = null;
         let lineWidth = 2;
-        let gridSize = 10; // 10毫米一格
+        let gridSize = 10;
         let showEndpointGuide = true;
-        let showLineLength = false; // 新增：是否显示线段长度
-        // 200m*200m画布范围（毫米）
+        let showLineLength = false;
         let canvasMinX = -100000, canvasMaxX = 100000;
         let canvasMinY = -100000, canvasMaxY = 100000;
         
-        // 双指缩放相关变量 - 保留原有逻辑
+        // 新增：图层和样式相关变量
+        let currentLayer = 1; // 默认图层1
+        let layerVisibility = {1: true, 2: true, 3: true, 4: true, 5: true}; // 图层显隐状态
+        let layerNames = {1: "图层 1", 2: "图层 2", 3: "图层 3", 4: "图层 4", 5: "图层 5"}; // 图层名称
+        let lineStyle = {
+            type: 'solid', // solid/dashed (修改：只保留直线和虚线)
+            color: 'white'  // 可选择：white/red/blue/green/yellow
+        };
+        
+        // 新增：文字编辑相关变量
+        let isAddingText = false;
+        let isSelectingTextPosition = false; // 新增：标记是否正在选择文字位置
+        let currentText = {
+            content: '',
+            size: 20,
+            color: 'white', // 默认白色文字
+            x: 0,
+            y: 0 // 新增：存储选择的文字位置
+        };
+        
+        // 新增：微信风格文字编辑变量
+        let selectedTextIndex = -1; // 当前选中的文字索引
+        let isDraggingText = false; // 是否正在拖拽文字
+        let textDragOffsetX = 0;
+        let textDragOffsetY = 0;
+        const textEditToolbar = document.getElementById('text-edit-toolbar');
+        
+        // 双指缩放相关变量
         let isPinching = false;
         let initialPinchDistance = 0;
         let initialPinchScale = 1;
@@ -445,7 +830,7 @@ ${lineweight}`);
         let initialPinchCenterX = 0;
         let initialPinchCenterY = 0;
         
-        // 初始化函数 - 保留原有逻辑
+        // 初始化函数
         function init() {
             canvas = document.getElementById('drawing-canvas');
             ctx = canvas.getContext('2d');
@@ -456,13 +841,16 @@ ${lineweight}`);
             
             // 初始化事件监听
             setupEventListeners();
+
+            // 新增：加载缓存数据
+            loadDrawingCache();
             
             // 初始绘制
             drawAll();
             updatePositionDisplay();
         }
         
-        // 调整Canvas大小 - 保留原有逻辑
+        // 调整Canvas大小
         function resizeCanvas() {
             const container = document.getElementById('canvas-container');
             canvas.width = container.clientWidth;
@@ -472,20 +860,19 @@ ${lineweight}`);
             drawAll();
         }
         
-        // 设置事件监听 - 保留原有逻辑+新增长度按钮监听
+        // 设置事件监听
         function setupEventListeners() {
-            // 数字键盘按钮（圆形拨号键）
-            document.querySelectorAll('.num-btn').forEach(btn => {
+            // 数字键盘按钮（包含小数点）
+            document.querySelectorAll('.num-btn, .dot-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const input = document.getElementById('distance-input');
                     const value = btn.dataset.value;
                     
-                    // 处理小数点
+                    // 小数点特殊处理：防止重复输入
                     if (value === '.' && input.value.includes('.')) return;
                     
                     input.value += value;
                     
-                    // 限制最大值200000
                     const numValue = parseFloat(input.value) || 0;
                     if (numValue > 200000) {
                         input.value = '200000';
@@ -493,13 +880,21 @@ ${lineweight}`);
                 });
             });
             
-            // 清除按钮（独立）
+            // 优化：退位键事件（删除最后一位）
+            document.getElementById('backspace-btn').addEventListener('click', () => {
+                const input = document.getElementById('distance-input');
+                if (input.value.length > 0) {
+                    input.value = input.value.slice(0, -1);
+                }
+            });
+            
+            // 清除按钮
             document.getElementById('clear-btn').addEventListener('click', () => {
                 const input = document.getElementById('distance-input');
                 input.value = '';
             });
             
-            // 方向按钮 - 圆形样式
+            // 方向按钮
             document.querySelectorAll('.direction-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     if (isDeleting || isSelectingStartPoint) return;
@@ -513,31 +908,32 @@ ${lineweight}`);
                 });
             });
             
-            // 确认按钮 - 核心修改：绘制后整体图形居中
+            // 确认按钮
             document.getElementById('confirm-btn').addEventListener('click', () => {
                 if (isDeleting || isSelectingStartPoint || !selectedDirection) return;
                 
                 const distanceInput = document.getElementById('distance-input');
-                const distance = parseInt(distanceInput.value) || 0;
+                // 修改：支持小数长度输入
+                const distance = parseFloat(distanceInput.value) || 0;
                 
                 if (distance > 0) {
                     drawLine(selectedDirection, distance);
                     
-                    // 清除选中的方向
                     document.querySelectorAll('.direction-btn').forEach(btn => {
                         btn.classList.remove('bg-white/20');
                     });
                     selectedDirection = null;
                     
-                    // 清空输入框
                     distanceInput.value = '';
                     
-                    // 核心修改：绘制后整体图形居中
                     centerDrawing();
+
+                    // 新增：保存缓存
+                    saveDrawingCache();
                 }
             });
 
-            // 新增：显示/隐藏线段长度按钮
+            // 显示/隐藏线段长度按钮
             document.getElementById('toggle-length-btn').addEventListener('click', () => {
                 showLineLength = !showLineLength;
                 const btn = document.getElementById('toggle-length-btn');
@@ -549,10 +945,10 @@ ${lineweight}`);
                 drawAll();
             });
             
-            // 删除按钮 - 保留原有逻辑
+            // 删除按钮
             document.getElementById('delete-btn').addEventListener('click', toggleDeleteMode);
             
-            // 线宽滑块 - 保留原有逻辑
+            // 线宽滑块
             const lineWidthSlider = document.getElementById('line-width');
             const lineWidthValue = document.getElementById('line-width-value');
             
@@ -561,7 +957,7 @@ ${lineweight}`);
                 lineWidthValue.textContent = `${lineWidth}px`;
             });
             
-            // 缩放按钮 - 保留原有逻辑
+            // 缩放按钮
             document.getElementById('zoom-in').addEventListener('click', () => {
                 scale *= 1.2;
                 drawAll();
@@ -579,14 +975,14 @@ ${lineweight}`);
                 drawAll();
             });
             
-            // 选择起点按钮 - 保留原有逻辑
+            // 选择起点按钮
             document.getElementById('select-start-btn').addEventListener('click', toggleSelectStartPoint);
             
-            // 历史记录按钮 - 保留原有逻辑
+            // 历史记录按钮
             document.getElementById('history-btn').addEventListener('click', toggleHistoryPanel);
             document.getElementById('close-history').addEventListener('click', toggleHistoryPanel);
             
-            // 保存和分享（修复DXF下载）
+            // 保存和分享
             document.getElementById('save-btn').addEventListener('click', saveDXF);
             document.getElementById('share-btn').addEventListener('click', () => {
                 document.getElementById('share-menu').classList.remove('hidden');
@@ -608,27 +1004,357 @@ ${lineweight}`);
             
             document.getElementById('share-wechat').addEventListener('click', shareToWeChat);
             
-            // 单指拖拽画布（查看用）- 保留原有逻辑
+            // 画布拖拽
             canvas.addEventListener('mousedown', handleCanvasMouseDown);
             canvas.addEventListener('mousemove', drag);
             canvas.addEventListener('mouseup', endDrag);
             canvas.addEventListener('mouseleave', endDrag);
             
-            // 触摸事件 - 双指缩放+移动 - 保留原有逻辑
+            // 触摸事件
             canvas.addEventListener('touchstart', handleTouchStart);
             canvas.addEventListener('touchmove', handleTouchMove);
             canvas.addEventListener('touchend', handleTouchEnd);
             canvas.addEventListener('touchcancel', handleTouchEnd);
+            
+            // 新增：图层相关事件（集成到右侧）
+            // 当前图层选择
+            document.getElementById('current-layer').addEventListener('change', (e) => {
+                currentLayer = parseInt(e.target.value);
+            });
+            
+            // 图层名称编辑（集成版）
+            document.querySelectorAll('.layer-name-inline').forEach(input => {
+                input.addEventListener('blur', (e) => {
+                    const layerNum = parseInt(e.target.dataset.layer);
+                    const newName = e.target.value.trim() || `图层 ${layerNum}`;
+                    layerNames[layerNum] = newName;
+                    // 更新下拉菜单选项
+                    const option = document.querySelector(`#current-layer option[value="${layerNum}"]`);
+                    if (option) {
+                        option.textContent = newName;
+                    }
+                    showToast(`图层${layerNum}已重命名为：${newName}`);
+                });
+                
+                // 按回车确认编辑
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        e.target.blur();
+                    }
+                });
+            });
+            
+            // 图层显隐切换（集成版）
+            document.querySelectorAll('.layer-toggle-inline').forEach(toggle => {
+                toggle.addEventListener('click', () => {
+                    const layerNum = parseInt(toggle.dataset.layer);
+                    layerVisibility[layerNum] = !layerVisibility[layerNum];
+                    toggle.classList.toggle('active');
+                    drawAll();
+                });
+            });
+            
+            // 修改：线条样式选择（只保留直线和虚线）
+            document.getElementById('style-solid').addEventListener('click', () => {
+                setLineStyle('solid', lineStyle.color);
+            });
+            
+            document.getElementById('style-dashed').addEventListener('click', () => {
+                setLineStyle('dashed', lineStyle.color);
+            });
+
+            // 新增：颜色选择按钮事件
+            document.querySelectorAll('.color-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // 移除所有颜色按钮的active状态
+                    document.querySelectorAll('.color-btn').forEach(b => {
+                        b.classList.remove('active');
+                    });
+                    // 设置当前按钮为active
+                    btn.classList.add('active');
+                    // 更新线条颜色
+                    const color = btn.dataset.color;
+                    lineStyle.color = color;
+                    // 更新文字默认颜色（强制白色）
+                    currentText.color = 'white';
+                    document.getElementById('text-color').value = 'white';
+                });
+            });
+
+            // 优化：文字编辑相关事件
+            document.getElementById('add-text-btn').addEventListener('click', toggleAddTextMode);
+            document.getElementById('confirm-text-btn').addEventListener('click', confirmAddText);
+            document.getElementById('cancel-text-btn').addEventListener('click', cancelAddText);
+            
+            // 文字内容输入
+            document.getElementById('text-content').addEventListener('input', (e) => {
+                currentText.content = e.target.value;
+            });
+            
+            // 文字大小输入
+            document.getElementById('text-size').addEventListener('input', (e) => {
+                currentText.size = parseInt(e.target.value) || 20;
+            });
+            
+            // 文字颜色选择（强制默认白色）
+            document.getElementById('text-color').addEventListener('change', (e) => {
+                // 强制文字为白色
+                currentText.color = 'white';
+                document.getElementById('text-color').value = 'white';
+            });
+
+            // 新增：微信风格文字编辑事件
+            document.getElementById('text-edit-btn').addEventListener('click', editSelectedText);
+            document.getElementById('text-delete-btn').addEventListener('click', deleteSelectedText);
+
+            // 新增：缓存恢复按钮事件
+            document.getElementById('restore-yes').addEventListener('click', () => {
+                restoreDrawingCache();
+                document.getElementById('restore-hint').classList.add('hidden');
+                showToast('已恢复上次绘图状态');
+            });
+            
+            document.getElementById('restore-no').addEventListener('click', () => {
+                clearDrawingCache();
+                document.getElementById('restore-hint').classList.add('hidden');
+            });
+
+            // 新增：清除缓存按钮事件
+            document.getElementById('clear-cache-btn').addEventListener('click', () => {
+                clearDrawingCache();
+                showToast('缓存已清除');
+            });
+
+            // 新增：页面关闭/刷新时自动保存缓存
+            window.addEventListener('beforeunload', saveDrawingCache);
+        }
+        
+        // 修改：设置线条样式（只保留直线和虚线）
+        function setLineStyle(type, color) {
+            // 重置所有样式按钮状态
+            document.querySelectorAll('.style-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // 设置当前样式
+            lineStyle.type = type;
+            lineStyle.color = color;
+            
+            // 激活对应按钮
+            if (type === 'solid') {
+                document.getElementById('style-solid').classList.add('active');
+            } else if (type === 'dashed') {
+                document.getElementById('style-dashed').classList.add('active');
+            }
         }
 
-        // 核心功能：绘制后整体图形居中 - 新增功能
-        function centerDrawing() {
-            if (lines.length === 0) return;
+        // 优化：切换添加文字模式 - 先选择位置再输入文字
+        function toggleAddTextMode() {
+            isAddingText = !isAddingText;
+            const addTextBtn = document.getElementById('add-text-btn');
+            const textModal = document.getElementById('text-modal');
+            const textPositionHint = document.getElementById('text-position-hint');
             
-            // 计算所有线条的边界框
+            if (isAddingText) {
+                // 第一步：选择文字位置
+                isSelectingTextPosition = true;
+                addTextBtn.innerHTML = '<i class="fa fa-times text-xl mr-2"></i><span>取消选择</span>';
+                canvas.style.cursor = 'crosshair';
+                
+                // 显示位置选择提示
+                textPositionHint.classList.remove('hidden');
+                
+                // 重置文字默认值（强制白色）
+                currentText = {
+                    content: '',
+                    size: 20,
+                    color: 'white', // 强制白色
+                    x: 0,
+                    y: 0
+                };
+                
+                if (isDeleting) {
+                    toggleDeleteMode();
+                }
+                if (isSelectingStartPoint) {
+                    toggleSelectStartPoint();
+                }
+            } else {
+                // 取消添加文字
+                isSelectingTextPosition = false;
+                addTextBtn.innerHTML = '<i class="fa fa-font text-xl mr-2"></i><span>添加文字</span>';
+                canvas.style.cursor = 'grab';
+                textModal.classList.add('hidden');
+                textPositionHint.classList.add('hidden');
+                hideTextEditToolbar();
+                selectedTextIndex = -1;
+            }
+            
+            drawAll();
+        }
+
+        // 优化：确认添加文字
+        function confirmAddText() {
+            if (!isAddingText || !currentText.content.trim()) {
+                showToast('请输入文字内容');
+                return;
+            }
+            
+            // 创建文字对象（强制白色）
+            const newText = {
+                content: currentText.content.trim(),
+                x: currentText.x,
+                y: currentText.y,
+                size: currentText.size,
+                color: 'white', // 强制白色
+                layer: currentLayer
+            };
+            
+            texts.push(newText);
+            
+            // 保存到历史记录
+            saveTextToHistory(newText);
+
+            // 新增：保存缓存
+            saveDrawingCache();
+            
+            // 关闭弹窗并退出添加文字模式
+            toggleAddTextMode();
+            
+            // 重绘
+            drawAll();
+            showToast('文字添加成功');
+        }
+
+        // 优化：取消添加文字
+        function cancelAddText() {
+            toggleAddTextMode();
+        }
+
+        // 新增：保存文字到历史记录
+        function saveTextToHistory(text) {
+            if (historyIndex < history.length - 1) {
+                history = history.slice(0, historyIndex + 1);
+            }
+            
+            history.push({
+                action: 'addText',
+                text: { ...text },
+                timestamp: new Date()
+            });
+            
+            historyIndex = history.length - 1;
+            
+            if (history.length > 50) {
+                history.shift();
+                historyIndex--;
+            }
+            
+            updateHistoryPanel();
+        }
+
+        // 新增：显示文字编辑工具栏（微信截图风格）
+        function showTextEditToolbar(textX, textY) {
+            const rect = canvas.getBoundingClientRect();
+            const toolbarX = rect.left + (textX * scale) + offsetX + 20;
+            const toolbarY = rect.top + (textY * scale) + offsetY - 40;
+            
+            textEditToolbar.style.left = `${toolbarX}px`;
+            textEditToolbar.style.top = `${toolbarY}px`;
+            textEditToolbar.classList.remove('hidden');
+        }
+
+        // 新增：隐藏文字编辑工具栏
+        function hideTextEditToolbar() {
+            textEditToolbar.classList.add('hidden');
+            selectedTextIndex = -1;
+            isDraggingText = false;
+            canvas.style.cursor = 'grab';
+        }
+
+        // 新增：编辑选中的文字
+        function editSelectedText() {
+            if (selectedTextIndex === -1 || selectedTextIndex >= texts.length) return;
+            
+            const text = texts[selectedTextIndex];
+            currentText = {
+                content: text.content,
+                size: text.size,
+                color: 'white', // 强制白色
+                x: text.x,
+                y: text.y
+            };
+            
+            // 显示编辑弹窗
+            document.getElementById('text-content').value = text.content;
+            document.getElementById('text-size').value = text.size;
+            document.getElementById('text-color').value = 'white'; // 强制白色
+            document.getElementById('text-modal').classList.remove('hidden');
+            
+            // 隐藏工具栏
+            hideTextEditToolbar();
+            
+            // 修改确认按钮逻辑
+            const originalConfirmHandler = document.getElementById('confirm-text-btn').onclick;
+            document.getElementById('confirm-text-btn').onclick = () => {
+                if (!currentText.content.trim()) {
+                    showToast('请输入文字内容');
+                    return;
+                }
+                
+                // 更新文字
+                texts[selectedTextIndex] = {
+                    ...texts[selectedTextIndex],
+                    content: currentText.content.trim(),
+                    size: currentText.size,
+                    color: 'white' // 强制白色
+                };
+                
+                // 保存缓存
+                saveDrawingCache();
+                
+                // 关闭弹窗
+                document.getElementById('text-modal').classList.add('hidden');
+                drawAll();
+                showToast('文字已更新');
+                
+                // 恢复原事件
+                document.getElementById('confirm-text-btn').onclick = originalConfirmHandler;
+            };
+        }
+
+        // 新增：删除选中的文字
+        function deleteSelectedText() {
+            if (selectedTextIndex === -1 || selectedTextIndex >= texts.length) return;
+            
+            texts.splice(selectedTextIndex, 1);
+            
+            // 保存到历史记录
+            history.push({
+                action: 'deleteText',
+                text: { ...texts[selectedTextIndex] },
+                index: selectedTextIndex,
+                timestamp: new Date()
+            });
+            
+            historyIndex = history.length - 1;
+            
+            // 保存缓存
+            saveDrawingCache();
+            
+            hideTextEditToolbar();
+            drawAll();
+            showToast('文字已删除');
+        }
+        
+        // 居中绘制
+        function centerDrawing() {
+            if (lines.length === 0 && texts.length === 0) return;
+            
             let minX = Infinity, maxX = -Infinity;
             let minY = Infinity, maxY = -Infinity;
             
+            // 计算线条边界
             lines.forEach(line => {
                 minX = Math.min(minX, line.startX, line.endX);
                 maxX = Math.max(maxX, line.startX, line.endX);
@@ -636,22 +1362,27 @@ ${lineweight}`);
                 maxY = Math.max(maxY, line.startY, line.endY);
             });
             
-            // 计算中心点
+            // 计算文字边界
+            texts.forEach(text => {
+                minX = Math.min(minX, text.x);
+                maxX = Math.max(maxX, text.x);
+                minY = Math.min(minY, text.y);
+                maxY = Math.max(maxY, text.y);
+            });
+            
             const centerX = (minX + maxX) / 2;
             const centerY = (minY + maxY) / 2;
             
-            // 计算画布中心位置
             const canvasCenterX = canvas.width / 2;
             const canvasCenterY = canvas.height / 2;
             
-            // 调整偏移量使图形居中
             offsetX = canvasCenterX - centerX * scale;
             offsetY = canvasCenterY - centerY * scale;
             
             drawAll();
         }
         
-        // 保留原有触摸/拖拽/绘制等所有核心逻辑
+        // 触摸相关函数
         function getDistance(touch1, touch2) {
             const dx = touch2.clientX - touch1.clientX;
             const dy = touch2.clientY - touch1.clientY;
@@ -708,6 +1439,9 @@ ${lineweight}`);
                         
                         currentX = newX;
                         currentY = newY;
+
+                        // 新增：保存缓存
+                        saveDrawingCache();
                         
                         drawAll();
                         updatePositionDisplay();
@@ -715,11 +1449,76 @@ ${lineweight}`);
                         
                         toggleSelectStartPoint();
                     }
+                } else if (isSelectingTextPosition) {
+                    // 优化：在选择文字位置模式下点击画布确定位置
+                    const rect = canvas.getBoundingClientRect();
+                    let newX = (touch.clientX - rect.left - offsetX) / scale;
+                    let newY = (touch.clientY - rect.top - offsetY) / scale;
+                    
+                    newX = Math.round(newX / gridSize) * gridSize;
+                    newY = Math.round(newY / gridSize) * gridSize;
+                    
+                    // 保存选择的文字位置
+                    currentText.x = newX;
+                    currentText.y = newY;
+                    
+                    // 隐藏位置选择提示，打开文字编辑弹窗
+                    document.getElementById('text-position-hint').classList.add('hidden');
+                    document.getElementById('text-modal').classList.remove('hidden');
+                    
+                    // 更新文字编辑表单默认值（强制白色）
+                    document.getElementById('text-content').value = '';
+                    document.getElementById('text-size').value = '20';
+                    document.getElementById('text-color').value = 'white';
+                    
+                    // 取消位置选择状态，但保持添加文字状态
+                    isSelectingTextPosition = false;
+                    canvas.style.cursor = 'text';
+                    
+                } else if (isAddingText) {
+                    // 在添加文字模式下点击画布设置文字位置（备用）
+                    const rect = canvas.getBoundingClientRect();
+                    let newX = (touch.clientX - rect.left - offsetX) / scale;
+                    let newY = (touch.clientY - rect.top - offsetY) / scale;
+                    
+                    newX = Math.round(newX / gridSize) * gridSize;
+                    newY = Math.round(newY / gridSize) * gridSize;
+                    
+                    currentX = newX;
+                    currentY = newY;
+                    updatePositionDisplay();
                 } else {
-                    isDragging = true;
-                    lastX = touch.clientX;
-                    lastY = touch.clientY;
-                    canvas.style.cursor = 'grabbing';
+                    // 检查是否点击了文字（微信风格）
+                    const rect = canvas.getBoundingClientRect();
+                    const mouseX = (touch.clientX - rect.left - offsetX) / scale;
+                    const mouseY = (touch.clientY - rect.top - offsetY) / scale;
+                    
+                    const textIndex = texts.findIndex(text => {
+                        if (!layerVisibility[text.layer]) return false;
+                        const distance = Math.sqrt(Math.pow(mouseX - text.x, 2) + Math.pow(mouseY - text.y, 2));
+                        return distance < text.size / scale;
+                    });
+                    
+                    if (textIndex !== -1) {
+                        // 选中文字
+                        selectedTextIndex = textIndex;
+                        isDraggingText = true;
+                        
+                        // 计算偏移量
+                        textDragOffsetX = mouseX - texts[textIndex].x;
+                        textDragOffsetY = mouseY - texts[textIndex].y;
+                        
+                        // 显示编辑工具栏
+                        showTextEditToolbar(texts[textIndex].x, texts[textIndex].y);
+                        canvas.style.cursor = 'move';
+                    } else {
+                        // 普通拖拽
+                        hideTextEditToolbar();
+                        isDragging = true;
+                        lastX = touch.clientX;
+                        lastY = touch.clientY;
+                        canvas.style.cursor = 'grabbing';
+                    }
                 }
             }
         }
@@ -744,18 +1543,37 @@ ${lineweight}`);
                 
                 drawAll();
             } 
-            else if (e.touches.length === 1 && isDragging && !isSelectingStartPoint && !isDeleting) {
+            else if (e.touches.length === 1) {
                 const touch = e.touches[0];
-                const deltaX = touch.clientX - lastX;
-                const deltaY = touch.clientY - lastY;
                 
-                offsetX += deltaX;
-                offsetY += deltaY;
-                
-                lastX = touch.clientX;
-                lastY = touch.clientY;
-                
-                drawAll();
+                if (isDraggingText && selectedTextIndex !== -1) {
+                    // 拖拽文字（微信风格）
+                    const rect = canvas.getBoundingClientRect();
+                    const mouseX = (touch.clientX - rect.left - offsetX) / scale;
+                    const mouseY = (touch.clientY - rect.top - offsetY) / scale;
+                    
+                    // 更新文字位置
+                    texts[selectedTextIndex].x = mouseX - textDragOffsetX;
+                    texts[selectedTextIndex].y = mouseY - textDragOffsetY;
+                    
+                    // 更新工具栏位置
+                    showTextEditToolbar(texts[selectedTextIndex].x, texts[selectedTextIndex].y);
+                    
+                    drawAll();
+                } 
+                else if (isDragging && !isSelectingStartPoint && !isDeleting && !isAddingText && !isSelectingTextPosition) {
+                    // 普通画布拖拽
+                    const deltaX = touch.clientX - lastX;
+                    const deltaY = touch.clientY - lastY;
+                    
+                    offsetX += deltaX;
+                    offsetY += deltaY;
+                    
+                    lastX = touch.clientX;
+                    lastY = touch.clientY;
+                    
+                    drawAll();
+                }
             }
         }
         
@@ -768,12 +1586,26 @@ ${lineweight}`);
             
             if (e.touches.length < 1) {
                 isDragging = false;
-                canvas.style.cursor = 'grab';
+                isDraggingText = false;
+                
+                // 保存文字位置修改
+                if (selectedTextIndex !== -1) {
+                    saveDrawingCache();
+                }
+                
+                if (isSelectingTextPosition) {
+                    canvas.style.cursor = 'crosshair';
+                } else if (isAddingText) {
+                    canvas.style.cursor = 'text';
+                } else {
+                    canvas.style.cursor = 'grab';
+                }
             }
         }
         
+        // 修改：绘制线条（只保留直线/虚线样式，支持小数长度）
         function drawLine(direction, distance) {
-            if (isSelectingStartPoint) return;
+            if (isSelectingStartPoint || isAddingText) return;
             
             const startX = currentX;
             const startY = currentY;
@@ -798,14 +1630,19 @@ ${lineweight}`);
             endX = Math.max(canvasMinX, Math.min(canvasMaxX, endX));
             endY = Math.max(canvasMinY, Math.min(canvasMaxY, endY));
             
-            // 添加线条（记录长度）
+            // 新增：记录图层和样式信息
             const newLine = {
                 startX,
                 startY,
                 endX,
                 endY,
                 width: lineWidth,
-                length: distance // 记录线段长度
+                length: distance,
+                layer: currentLayer, // 所属图层
+                style: { // 线条样式
+                    type: lineStyle.type,
+                    color: lineStyle.color
+                }
             };
             lines.push(newLine);
             
@@ -839,7 +1676,7 @@ ${lineweight}`);
             updateHistoryPanel();
         }
         
-        // 绘制所有内容（核心修改：数字在线条上方悬浮显示）
+        // 修改：绘制所有内容（适配新的线条样式）
         function drawAll() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.save();
@@ -847,13 +1684,28 @@ ${lineweight}`);
             ctx.translate(offsetX, offsetY);
             ctx.scale(scale, scale);
             
-            // 绘制所有线条
+            // 绘制所有线条（根据图层显隐过滤）
             lines.forEach(line => {
+                // 跳过隐藏图层的线条
+                if (!layerVisibility[line.layer]) return;
+                
                 ctx.beginPath();
                 ctx.moveTo(line.startX, line.startY);
                 ctx.lineTo(line.endX, line.endY);
-                ctx.strokeStyle = 'white';
+                
+                // 设置线条样式
+                ctx.strokeStyle = line.style.color;
+                
+                // 设置线宽
                 ctx.lineWidth = line.width / scale;
+                
+                // 设置虚线样式
+                if (line.style.type === 'dashed') {
+                    ctx.setLineDash([10 / scale, 5 / scale]); // 虚线样式
+                } else {
+                    ctx.setLineDash([]); // 实线
+                }
+                
                 ctx.stroke();
                 
                 // 端点红点指引
@@ -869,49 +1721,89 @@ ${lineweight}`);
                     ctx.fill();
                 }
 
-                // 核心修改：数字在线条上方悬浮显示
+                // 显示长度数字（悬浮在线条上方）
                 if (showLineLength && line.length) {
                     const midX = (line.startX + line.endX) / 2;
                     const midY = (line.startY + line.endY) / 2;
                     
-                    // 计算线条角度
                     const dx = line.endX - line.startX;
                     const dy = line.endY - line.startY;
                     const angle = Math.atan2(dy, dx);
                     
-                    // 计算悬浮偏移量（根据参考图比例）
-                    // 偏移距离：基于缩放比例的25像素（在线条上方）
                     const offsetDistance = 25 / scale;
                     let textX = midX;
                     let textY = midY;
                     
-                    // 根据线条方向计算上方偏移
                     if (Math.abs(dx) > Math.abs(dy)) {
-                        // 水平线条：向上偏移
                         textY = midY - offsetDistance;
                     } else {
-                        // 垂直线条：向左偏移（视觉上的上方）
                         textX = midX - offsetDistance;
                     }
                     
-                    // 保存当前状态
                     ctx.save();
-                    
-                    // 平移到偏移后的位置并旋转文本使其平行于线条
                     ctx.translate(textX, textY);
                     ctx.rotate(angle);
-                    
-                    // 设置文本样式（红色、无单位）
-                    ctx.font = `${24 / scale}px Arial`; // 增大字体更醒目
-                    ctx.fillStyle = '#ff0000'; // 纯红色（参考图片颜色）
+                    ctx.font = `${24 / scale}px Arial`;
+                    ctx.fillStyle = '#ff0000';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    
-                    // 绘制长度数字（无单位）
+                    // 修改：支持显示小数长度
                     ctx.fillText(`${line.length}`, 0, 0);
-                    
-                    // 恢复状态
                     ctx.restore();
+                }
+            });
+            
+            // 新增：绘制所有文字（微信截图风格，白色文字）
+            texts.forEach((text, index) => {
+                // 跳过隐藏图层的文字
+                if (!layerVisibility[text.layer]) return;
+                
+                ctx.save();
+                
+                // 微信截图风格：白色文字 + 半透明黑色背景
+                const fontSize = text.size / scale;
+                ctx.font = `${fontSize}px Arial, sans-serif`;
+                ctx.fillStyle = 'white'; // 强制白色
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // 绘制半透明黑色背景（微信截图风格）
+                const textWidth = ctx.measureText(text.content).width;
+                const paddingX = 8 / scale;
+                const paddingY = 4 / scale;
+                
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; // 半透明黑色背景
+                ctx.fillRect(
+                    text.x - textWidth/2 - paddingX,
+                    text.y - fontSize/2 - paddingY,
+                    textWidth + paddingX * 2,
+                    fontSize + paddingY * 2
+                );
+                
+                // 绘制白色文字
+                ctx.fillStyle = 'white';
+                ctx.fillText(text.content, text.x, text.y);
+                
+                // 选中状态：绘制边框
+                if (index === selectedTextIndex) {
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.lineWidth = 1 / scale;
+                    ctx.strokeRect(
+                        text.x - textWidth/2 - paddingX,
+                        text.y - fontSize/2 - paddingY,
+                        textWidth + paddingX * 2,
+                        fontSize + paddingY * 2
+                    );
+                }
+                
+                ctx.restore();
+                
+                // 绘制文字位置标记
+                if (showEndpointGuide) {
+                    ctx.beginPath();
+                    ctx.arc(text.x, text.y, 2 / scale, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(59, 130, 246, 0.8)';
+                    ctx.fill();
                 }
             });
             
@@ -919,7 +1811,7 @@ ${lineweight}`);
             if (!isDeleting) {
                 ctx.beginPath();
                 ctx.arc(currentX, currentY, 5 / scale, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(59, 130, 246, 0.8)';
+                ctx.fillStyle = isAddingText ? 'rgba(16, 185, 129, 0.8)' : 'rgba(59, 130, 246, 0.8)';
                 ctx.fill();
             }
             
@@ -927,7 +1819,7 @@ ${lineweight}`);
         }
         
         function updatePositionDisplay() {
-            document.getElementById('current-position').textContent = `X: ${currentX}, Y: ${currentY}`;
+            // 移除了坐标显示功能，此函数保留为空
         }
         
         function toggleDeleteMode() {
@@ -937,6 +1829,7 @@ ${lineweight}`);
             if (isDeleting) {
                 deleteBtn.innerHTML = '<i class="fa fa-check text-xl mr-2"></i><span>确认</span>';
                 canvas.addEventListener('click', deleteLineAtPosition);
+                hideTextEditToolbar();
             } else {
                 deleteBtn.innerHTML = '<i class="fa fa-trash text-xl mr-2"></i><span>删除</span>';
                 canvas.removeEventListener('click', deleteLineAtPosition);
@@ -952,6 +1845,7 @@ ${lineweight}`);
             const mouseX = (e.clientX - rect.left - offsetX) / scale;
             const mouseY = (e.clientY - rect.top - offsetY) / scale;
             
+            // 先尝试删除线条
             const lineIndex = lines.findIndex(line => {
                 return isPointOnLine(mouseX, mouseY, line.startX, line.startY, line.endX, line.endY, 10 / scale);
             });
@@ -972,10 +1866,47 @@ ${lineweight}`);
                     history.shift();
                     historyIndex--;
                 }
+
+                // 新增：保存缓存
+                saveDrawingCache();
                 
                 drawAll();
                 updateHistoryPanel();
+                return;
             }
+            
+            // 尝试删除文字
+            const textIndex = texts.findIndex(text => {
+                const distance = Math.sqrt(Math.pow(mouseX - text.x, 2) + Math.pow(mouseY - text.y, 2));
+                return distance < 20 / scale;
+            });
+            
+            if (textIndex !== -1) {
+                const deletedText = texts[textIndex];
+                texts.splice(textIndex, 1);
+                
+                history.push({
+                    action: 'deleteText',
+                    text: { ...deletedText },
+                    index: textIndex,
+                    timestamp: new Date()
+                });
+                
+                historyIndex = history.length - 1;
+                if (history.length > 50) {
+                    history.shift();
+                    historyIndex--;
+                }
+
+                // 新增：保存缓存
+                saveDrawingCache();
+                
+                drawAll();
+                updateHistoryPanel();
+                return;
+            }
+            
+            showToast('未找到可删除的元素');
         }
         
         function isPointOnLine(px, py, x1, y1, x2, y2, tolerance) {
@@ -1037,6 +1968,9 @@ ${lineweight}`);
                     
                     currentX = newX;
                     currentY = newY;
+
+                    // 新增：保存缓存
+                    saveDrawingCache();
                     
                     drawAll();
                     updatePositionDisplay();
@@ -1044,8 +1978,73 @@ ${lineweight}`);
                     
                     toggleSelectStartPoint();
                 }
+            } else if (isSelectingTextPosition) {
+                // 优化：在选择文字位置模式下点击画布确定位置
+                const rect = canvas.getBoundingClientRect();
+                let newX = (e.clientX - rect.left - offsetX) / scale;
+                let newY = (e.clientY - rect.top - offsetY) / scale;
+                
+                newX = Math.round(newX / gridSize) * gridSize;
+                newY = Math.round(newY / gridSize) * gridSize;
+                
+                // 保存选择的文字位置
+                currentText.x = newX;
+                currentText.y = newY;
+                
+                // 隐藏位置选择提示，打开文字编辑弹窗
+                document.getElementById('text-position-hint').classList.add('hidden');
+                document.getElementById('text-modal').classList.remove('hidden');
+                
+                // 更新文字编辑表单默认值（强制白色）
+                document.getElementById('text-content').value = '';
+                document.getElementById('text-size').value = '20';
+                document.getElementById('text-color').value = 'white';
+                
+                // 取消位置选择状态，但保持添加文字状态
+                isSelectingTextPosition = false;
+                canvas.style.cursor = 'text';
+                
+            } else if (isAddingText) {
+                // 在添加文字模式下点击画布设置文字位置（备用）
+                const rect = canvas.getBoundingClientRect();
+                let newX = (e.clientX - rect.left - offsetX) / scale;
+                let newY = (e.clientY - rect.top - offsetY) / scale;
+                
+                newX = Math.round(newX / gridSize) * gridSize;
+                newY = Math.round(newY / gridSize) * gridSize;
+                
+                currentX = newX;
+                currentY = newY;
+                updatePositionDisplay();
             } else if (!isDeleting) {
-                startDrag(e);
+                // 检查是否点击了文字（微信风格）
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = (e.clientX - rect.left - offsetX) / scale;
+                const mouseY = (e.clientY - rect.top - offsetY) / scale;
+                
+                const textIndex = texts.findIndex(text => {
+                    if (!layerVisibility[text.layer]) return false;
+                    const distance = Math.sqrt(Math.pow(mouseX - text.x, 2) + Math.pow(mouseY - text.y, 2));
+                    return distance < text.size / scale;
+                });
+                
+                if (textIndex !== -1) {
+                    // 选中文字
+                    selectedTextIndex = textIndex;
+                    isDraggingText = true;
+                    
+                    // 计算偏移量
+                    textDragOffsetX = mouseX - texts[textIndex].x;
+                    textDragOffsetY = mouseY - texts[textIndex].y;
+                    
+                    // 显示编辑工具栏
+                    showTextEditToolbar(texts[textIndex].x, texts[textIndex].y);
+                    canvas.style.cursor = 'move';
+                } else {
+                    // 普通拖拽
+                    hideTextEditToolbar();
+                    startDrag(e);
+                }
             }
         }
         
@@ -1057,37 +2056,213 @@ ${lineweight}`);
         }
         
         function drag(e) {
-            if (!isDragging || isDeleting) return;
-            
-            const deltaX = e.clientX - lastX;
-            const deltaY = e.clientY - lastY;
-            
-            offsetX += deltaX;
-            offsetY += deltaY;
-            
-            lastX = e.clientX;
-            lastY = e.clientY;
-            
-            drawAll();
+            if (isDraggingText && selectedTextIndex !== -1) {
+                // 拖拽文字（微信风格）
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = (e.clientX - rect.left - offsetX) / scale;
+                const mouseY = (e.clientY - rect.top - offsetY) / scale;
+                
+                // 更新文字位置
+                texts[selectedTextIndex].x = mouseX - textDragOffsetX;
+                texts[selectedTextIndex].y = mouseY - textDragOffsetY;
+                
+                // 更新工具栏位置
+                showTextEditToolbar(texts[selectedTextIndex].x, texts[selectedTextIndex].y);
+                
+                drawAll();
+            } else if (!isDragging || isDeleting || isAddingText || isSelectingTextPosition) {
+                return;
+            } else {
+                // 普通画布拖拽
+                const deltaX = e.clientX - lastX;
+                const deltaY = e.clientY - lastY;
+                
+                offsetX += deltaX;
+                offsetY += deltaY;
+                
+                lastX = e.clientX;
+                lastY = e.clientY;
+                
+                drawAll();
+            }
         }
         
         function endDrag() {
             isDragging = false;
-            canvas.style.cursor = 'grab';
+            
+            // 保存文字位置修改
+            if (isDraggingText && selectedTextIndex !== -1) {
+                saveDrawingCache();
+                isDraggingText = false;
+            }
+            
+            if (isSelectingTextPosition) {
+                canvas.style.cursor = 'crosshair';
+            } else if (isAddingText) {
+                canvas.style.cursor = 'text';
+            } else {
+                canvas.style.cursor = 'grab';
+            }
+        }
+
+        // 新增：保存绘图缓存到本地存储
+        function saveDrawingCache() {
+            try {
+                const cacheData = {
+                    lines: [...lines],
+                    texts: [...texts],
+                    currentX: currentX,
+                    currentY: currentY,
+                    currentLayer: currentLayer,
+                    layerVisibility: { ...layerVisibility },
+                    layerNames: { ...layerNames },
+                    lineStyle: { ...lineStyle },
+                    lineWidth: lineWidth,
+                    timestamp: new Date().toISOString()
+                };
+                
+                localStorage.setItem('dxfDrawingCache', JSON.stringify(cacheData));
+            } catch (error) {
+                console.error('保存缓存失败:', error);
+            }
+        }
+
+        // 新增：加载绘图缓存
+        function loadDrawingCache() {
+            try {
+                const cacheStr = localStorage.getItem('dxfDrawingCache');
+                if (!cacheStr) return;
+                
+                const cacheData = JSON.parse(cacheStr);
+                
+                // 显示恢复提示
+                document.getElementById('restore-hint').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('加载缓存失败:', error);
+                localStorage.removeItem('dxfDrawingCache');
+            }
+        }
+
+        // 新增：恢复绘图缓存
+        function restoreDrawingCache() {
+            try {
+                const cacheStr = localStorage.getItem('dxfDrawingCache');
+                if (!cacheStr) return;
+                
+                const cacheData = JSON.parse(cacheStr);
+                
+                // 恢复数据
+                lines = cacheData.lines || [];
+                texts = cacheData.texts || [];
+                currentX = cacheData.currentX || 0;
+                currentY = cacheData.currentY || 0;
+                currentLayer = cacheData.currentLayer || 1;
+                layerVisibility = cacheData.layerVisibility || {1: true, 2: true, 3: true, 4: true, 5: true};
+                layerNames = cacheData.layerNames || {1: "图层 1", 2: "图层 2", 3: "图层 3", 4: "图层 4", 5: "图层 5"};
+                lineStyle = cacheData.lineStyle || { type: 'solid', color: 'white' };
+                lineWidth = cacheData.lineWidth || 2;
+                
+                // 更新UI
+                document.getElementById('line-width').value = lineWidth;
+                document.getElementById('line-width-value').textContent = `${lineWidth}px`;
+                document.getElementById('current-layer').value = currentLayer;
+                
+                // 更新图层名称
+                document.querySelectorAll('.layer-name-inline').forEach(input => {
+                    const layerNum = parseInt(input.dataset.layer);
+                    input.value = layerNames[layerNum] || `图层 ${layerNum}`;
+                    
+                    // 更新下拉菜单
+                    const option = document.querySelector(`#current-layer option[value="${layerNum}"]`);
+                    if (option) {
+                        option.textContent = layerNames[layerNum] || `图层 ${layerNum}`;
+                    }
+                });
+                
+                // 更新图层显隐状态
+                document.querySelectorAll('.layer-toggle-inline').forEach(toggle => {
+                    const layerNum = parseInt(toggle.dataset.layer);
+                    if (layerVisibility[layerNum]) {
+                        toggle.classList.add('active');
+                    } else {
+                        toggle.classList.remove('active');
+                    }
+                });
+                
+                // 更新线条样式按钮
+                if (lineStyle.type === 'solid') {
+                    setLineStyle('solid', lineStyle.color);
+                } else {
+                    setLineStyle('dashed', lineStyle.color);
+                }
+                
+                // 更新颜色选择按钮
+                document.querySelectorAll('.color-btn').forEach(btn => {
+                    if (btn.dataset.color === lineStyle.color) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+                
+                drawAll();
+                
+            } catch (error) {
+                console.error('恢复缓存失败:', error);
+                showToast('恢复失败，将使用空白画布');
+            }
+        }
+
+        // 新增：清除绘图缓存
+        function clearDrawingCache() {
+            localStorage.removeItem('dxfDrawingCache');
+            document.getElementById('restore-hint').classList.add('hidden');
         }
         
-        // 修复DXF下载功能 - 核心修复
+        // 修改：保存DXF（适配新的线条样式和颜色，支持小数长度）
         function saveDXF() {
             try {
                 const dxf = new DXFDocument();
                 
+                // 添加线条
                 lines.forEach(line => {
+                    const layerName = `Layer${line.layer}`;
+                    const isDashed = line.style.type === 'dashed';
+                    const isBold = false; // 移除加粗功能
+                    const colorCode = {
+                        'white': 7,
+                        'red': 1,
+                        'blue': 5,
+                        'green': 3,
+                        'yellow': 2
+                    }[line.style.color] || 7;
+                    
                     dxf.addLine(
                         line.startX, 
                         line.startY, 
                         line.endX, 
                         line.endY, 
-                        line.width * 10 // 线宽转换为DXF单位
+                        line.width * 10,
+                        layerName,
+                        isDashed,
+                        isBold,
+                        colorCode
+                    );
+                });
+                
+                // 添加文字（强制白色）
+                texts.forEach(text => {
+                    const layerName = `Layer${text.layer}`;
+                    const colorCode = 7; // 白色代码
+                    
+                    dxf.addText(
+                        text.content,
+                        text.x,
+                        text.y,
+                        layerName,
+                        text.size,
+                        colorCode
                     );
                 });
                 
@@ -1097,7 +2272,6 @@ ${lineweight}`);
                     type: 'application/octet-stream' 
                 });
                 
-                // 兼容iPad/移动端下载
                 if (window.navigator.msSaveOrOpenBlob) {
                     window.navigator.msSaveBlob(blob, 'drawing.dxf');
                 } else {
@@ -1108,7 +2282,6 @@ ${lineweight}`);
                     a.style.display = 'none';
                     document.body.appendChild(a);
                     
-                    // 模拟点击（兼容移动端）
                     const event = new MouseEvent('click', {
                         bubbles: true,
                         cancelable: true,
@@ -1129,6 +2302,7 @@ ${lineweight}`);
             }
         }
         
+        // 修改：保存图片（适配新的线条样式和颜色）
         function saveImage() {
             try {
                 const tempCanvas = document.createElement('canvas');
@@ -1137,11 +2311,22 @@ ${lineweight}`);
                 const margin = 50;
                 let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
                 
+                // 计算线条边界
                 lines.forEach(line => {
+                    if (!layerVisibility[line.layer]) return;
                     minX = Math.min(minX, line.startX, line.endX);
                     maxX = Math.max(maxX, line.startX, line.endX);
                     minY = Math.min(minY, line.startY, line.endY);
                     maxY = Math.max(maxY, line.startY, line.endY);
+                });
+                
+                // 计算文字边界
+                texts.forEach(text => {
+                    if (!layerVisibility[text.layer]) return;
+                    minX = Math.min(minX, text.x - text.size);
+                    maxX = Math.max(maxX, text.x + text.size);
+                    minY = Math.min(minY, text.y - text.size);
+                    maxY = Math.max(maxY, text.y + text.size);
                 });
                 
                 if (minX === Infinity) {
@@ -1160,34 +2345,42 @@ ${lineweight}`);
                 tempCtx.fillStyle = 'white';
                 tempCtx.fillRect(0, 0, width, height);
                 
+                // 绘制线条
                 lines.forEach(line => {
+                    if (!layerVisibility[line.layer]) return;
+                    
                     tempCtx.beginPath();
                     tempCtx.moveTo(line.startX - minX + margin, line.startY - minY + margin);
                     tempCtx.lineTo(line.endX - minX + margin, line.endY - minY + margin);
-                    tempCtx.strokeStyle = 'black';
+                    
+                    // 设置线条样式
+                    tempCtx.strokeStyle = line.style.color;
                     tempCtx.lineWidth = line.width;
+                    
+                    if (line.style.type === 'dashed') {
+                        tempCtx.setLineDash([10, 5]);
+                    } else {
+                        tempCtx.setLineDash([]);
+                    }
+                    
                     tempCtx.stroke();
                     
-                    // 修改：保存图片时的长度显示样式（悬浮在线条上方）
+                    // 显示长度数字
                     if (showLineLength && line.length) {
                         const midX = (line.startX + line.endX) / 2;
                         const midY = (line.startY + line.endY) / 2;
                         
-                        // 计算线条角度
                         const dx = line.endX - line.startX;
                         const dy = line.endY - line.startY;
                         const angle = Math.atan2(dy, dx);
                         
-                        // 计算悬浮偏移量
                         const offsetDistance = 25;
                         let textX = midX;
                         let textY = midY;
                         
                         if (Math.abs(dx) > Math.abs(dy)) {
-                            // 水平线条：向上偏移
                             textY = midY - offsetDistance;
                         } else {
-                            // 垂直线条：向左偏移
                             textX = midX - offsetDistance;
                         }
                         
@@ -1198,9 +2391,43 @@ ${lineweight}`);
                         tempCtx.fillStyle = '#ff0000';
                         tempCtx.textAlign = 'center';
                         tempCtx.textBaseline = 'middle';
+                        // 修改：支持显示小数长度
                         tempCtx.fillText(`${line.length}`, 0, 0);
                         tempCtx.restore();
                     }
+                });
+                
+                // 绘制文字（微信截图风格，白色文字）
+                texts.forEach(text => {
+                    if (!layerVisibility[text.layer]) return;
+                    
+                    tempCtx.save();
+                    
+                    // 微信截图风格
+                    const fontSize = text.size;
+                    tempCtx.font = `${fontSize}px Arial, sans-serif`;
+                    tempCtx.fillStyle = 'white'; // 强制白色
+                    tempCtx.textAlign = 'center';
+                    tempCtx.textBaseline = 'middle';
+                    
+                    // 绘制半透明黑色背景
+                    const textWidth = tempCtx.measureText(text.content).width;
+                    const paddingX = 8;
+                    const paddingY = 4;
+                    
+                    tempCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    tempCtx.fillRect(
+                        text.x - minX + margin - textWidth/2 - paddingX,
+                        text.y - minY + margin - fontSize/2 - paddingY,
+                        textWidth + paddingX * 2,
+                        fontSize + paddingY * 2
+                    );
+                    
+                    // 绘制白色文字
+                    tempCtx.fillStyle = 'white';
+                    tempCtx.fillText(text.content, text.x - minX + margin, text.y - minY + margin);
+                    
+                    tempCtx.restore();
                 });
                 
                 tempCanvas.toBlob(blob => {
@@ -1267,9 +2494,13 @@ ${lineweight}`);
                 
                 let actionText;
                 if (record.action === 'draw') {
-                    actionText = '绘制线条';
+                    actionText = `绘制${record.line.style.type === 'solid' ? '直线' : '虚线'} (${layerNames[record.line.layer]}) - ${record.line.style.color}`;
                 } else if (record.action === 'delete') {
-                    actionText = '删除线条';
+                    actionText = `删除线条 (${layerNames[record.line.layer]})`;
+                } else if (record.action === 'addText') {
+                    actionText = `添加文字: ${record.text.content} (${layerNames[record.text.layer]})`;
+                } else if (record.action === 'deleteText') {
+                    actionText = `删除文字: ${record.text.content} (${layerNames[record.text.layer]})`;
                 } else if (record.action === 'move') {
                     actionText = '移动起点';
                 }
@@ -1317,6 +2548,10 @@ ${lineweight}`);
                 lines.pop();
             } else if (record.action === 'delete') {
                 lines.splice(record.index, 0, record.line);
+            } else if (record.action === 'addText') {
+                texts.pop();
+            } else if (record.action === 'deleteText') {
+                texts.splice(record.index, 0, record.text);
             } else if (record.action === 'move') {
                 currentX = record.fromX;
                 currentY = record.fromY;
@@ -1336,6 +2571,10 @@ ${lineweight}`);
                 lines.push(record.line);
             } else if (record.action === 'delete') {
                 lines.splice(record.index, 1);
+            } else if (record.action === 'addText') {
+                texts.push(record.text);
+            } else if (record.action === 'deleteText') {
+                texts.splice(record.index, 1);
             } else if (record.action === 'move') {
                 currentX = record.toX;
                 currentY = record.toY;
@@ -1349,10 +2588,17 @@ ${lineweight}`);
                 const lastLine = lines[lines.length - 1];
                 currentX = lastLine.endX;
                 currentY = lastLine.endY;
+            } else if (texts.length > 0) {
+                const lastText = texts[texts.length - 1];
+                currentX = lastText.x;
+                currentY = lastText.y;
             } else {
                 currentX = 0;
                 currentY = 0;
             }
+
+            // 新增：保存缓存
+            saveDrawingCache();
             
             drawAll();
             updatePositionDisplay();
@@ -1368,6 +2614,9 @@ ${lineweight}`);
                 
                 if (isDeleting) {
                     toggleDeleteMode();
+                }
+                if (isAddingText) {
+                    toggleAddTextMode();
                 }
             } else {
                 selectBtn.innerHTML = '<i class="fa fa-crosshairs text-xl mr-2"></i><span>选择起点</span>';
