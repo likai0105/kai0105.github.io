@@ -312,12 +312,6 @@ ${lineweight}`);
                 </button>
             </div>
             
-            <!-- 新增：显示线段长度按钮 -->
-            <button id="toggle-length-btn" class="function-btn mb-3">
-                <i class="fa fa-font text-xl mr-2"></i>
-                <span>显示长度</span>
-            </button>
-
             <!-- 确认按钮 -->
             <button id="confirm-btn" class="function-btn mb-3">
                 <i class="fa fa-check text-xl mr-2"></i>
@@ -344,6 +338,12 @@ ${lineweight}`);
                 <button id="select-start-btn" class="function-btn">
                     <i class="fa fa-crosshairs text-xl mr-2"></i>
                     <span>选择起点</span>
+                </button>
+                
+                <!-- 显示长度按钮 - 移到选择起点按钮下方 -->
+                <button id="toggle-length-btn" class="function-btn mt-3">
+                    <i class="fa fa-font text-xl mr-2"></i>
+                    <span>显示长度</span>
                 </button>
             </div>
             
@@ -839,7 +839,7 @@ ${lineweight}`);
             updateHistoryPanel();
         }
         
-        // 绘制所有内容（新增：线段长度标注）
+        // 绘制所有内容（修改：线段长度标注样式）
         function drawAll() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.save();
@@ -869,23 +869,34 @@ ${lineweight}`);
                     ctx.fill();
                 }
 
-                // 新增：绘制线段长度（平行上方）
+                // 修改：绘制线段长度（平行于线条、红色、无单位）
                 if (showLineLength && line.length) {
                     const midX = (line.startX + line.endX) / 2;
                     const midY = (line.startY + line.endY) / 2;
                     
-                    let textX = midX;
-                    let textY = midY - 10; // 平行上方10mm
+                    // 计算线条角度
+                    const dx = line.endX - line.startX;
+                    const dy = line.endY - line.startY;
+                    const angle = Math.atan2(dy, dx);
                     
-                    if (line.startX === line.endX) { // 垂直线
-                        textX = midX + 10; // 右侧10mm
-                    }
+                    // 保存当前状态
+                    ctx.save();
                     
-                    ctx.font = `${16 / scale}px Arial`;
-                    ctx.fillStyle = 'rgba(52, 211, 153, 0.9)';
+                    // 平移到中点并旋转文本使其平行于线条
+                    ctx.translate(midX, midY);
+                    ctx.rotate(angle);
+                    
+                    // 设置文本样式（红色、无单位）
+                    ctx.font = `${24 / scale}px Arial`; // 增大字体更醒目
+                    ctx.fillStyle = '#ff0000'; // 纯红色（参考图片颜色）
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillText(`${line.length} mm`, textX, textY);
+                    
+                    // 绘制长度数字（无单位）
+                    ctx.fillText(`${line.length}`, 0, 0);
+                    
+                    // 恢复状态
+                    ctx.restore();
                 }
             });
             
@@ -1142,21 +1153,23 @@ ${lineweight}`);
                     tempCtx.lineWidth = line.width;
                     tempCtx.stroke();
                     
+                    // 修改：保存图片时的长度显示样式
                     if (showLineLength && line.length) {
                         const midX = (line.startX + line.endX) / 2;
                         const midY = (line.startY + line.endY) / 2;
-                        let textX = midX - minX + margin;
-                        let textY = midY - minY + margin - 10;
+                        const dx = line.endX - line.startX;
+                        const dy = line.endY - line.startY;
+                        const angle = Math.atan2(dy, dx);
                         
-                        if (line.startX === line.endX) {
-                            textX += 10;
-                        }
-                        
-                        tempCtx.font = '16px Arial';
-                        tempCtx.fillStyle = '#34D399';
+                        tempCtx.save();
+                        tempCtx.translate(midX - minX + margin, midY - minY + margin);
+                        tempCtx.rotate(angle);
+                        tempCtx.font = '24px Arial';
+                        tempCtx.fillStyle = '#ff0000';
                         tempCtx.textAlign = 'center';
                         tempCtx.textBaseline = 'middle';
-                        tempCtx.fillText(`${line.length} mm`, textX, textY);
+                        tempCtx.fillText(`${line.length}`, 0, 0);
+                        tempCtx.restore();
                     }
                 });
                 
