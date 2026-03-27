@@ -144,13 +144,23 @@ ${lineweight}`);
                 box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
             }
             .btn-hover {
-                @apply transition-all duration-200 hover:bg-opacity-80 active:scale-95;
+                @apply transition-all duration-200 hover:bg-white/10 active:scale-95;
             }
             .input-focus {
-                @apply focus:ring-2 focus:ring-primary focus:outline-none;
+                @apply focus:ring-2 focus:ring-white/30 focus:outline-none;
             }
             .canvas-container {
                 touch-action: none;
+            }
+            /* 磨砂玻璃效果 */
+            .glass-effect {
+                background: rgba(255, 255, 255, 0.08);
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+                border: 1px solid rgba(255, 255, 255, 0.12);
+            }
+            .glass-effect-hover {
+                @apply hover:bg-white/15 transition-all duration-200;
             }
         }
         
@@ -163,7 +173,7 @@ ${lineweight}`);
         .control-panel {
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            @apply bg-dark bg-opacity-70;
+            @apply glass-effect;
         }
         
         input[type=number]::-webkit-inner-spin-button, 
@@ -173,36 +183,57 @@ ${lineweight}`);
         }
         
         .slider-thumb::-webkit-slider-thumb {
-            @apply appearance-none w-5 h-5 rounded-full bg-primary cursor-pointer;
+            @apply appearance-none w-5 h-5 rounded-full glass-effect cursor-pointer;
         }
         
         .slider-thumb::-moz-range-thumb {
-            @apply w-5 h-5 rounded-full bg-primary border-0 cursor-pointer;
+            @apply w-5 h-5 rounded-full glass-effect border-0 cursor-pointer;
         }
 
-        /* 放大数字按键（50%）- 保留原有样式仅放大 */
+        /* 数字按键 - 圆形 + 苹果拨号键布局 */
         .num-btn {
-            font-size: 1.5rem !important;
-            padding: 0.8rem !important;
-            min-width: 40px !important;
-            min-height: 40px !important;
+            @apply glass-effect rounded-full flex items-center justify-center text-xl transition-all duration-200 hover:bg-white/15 active:scale-95 !important;
+            width: 50px !important;
+            height: 50px !important;
+            font-size: 1.25rem !important;
+            padding: 0 !important;
+            min-width: unset !important;
+            min-height: unset !important;
+        }
+
+        /* 方向按钮 - 圆形 */
+        .direction-btn {
+            @apply glass-effect rounded-full flex items-center justify-center btn-hover !important;
+            width: 50px !important;
+            height: 50px !important;
         }
 
         /* 保留原有界面的核心样式 */
         .top-toolbar {
-            @apply absolute top-4 left-1/2 transform -translate-x-1/2 z-10 flex items-center space-x-4 px-4 py-2 rounded-full panel-shadow;
+            @apply absolute top-4 left-1/2 transform -translate-x-1/2 z-10 flex items-center space-x-4 px-4 py-2 rounded-full panel-shadow glass-effect;
         }
         
         .left-panel {
-            @apply absolute left-4 top-1/2 transform -translate-y-1/2 z-10 rounded-2xl p-4 w-36 panel-shadow;
+            @apply absolute left-4 top-1/2 transform -translate-y-1/2 z-10 rounded-2xl p-4 w-48 panel-shadow glass-effect;
         }
         
         .right-panel {
-            @apply absolute right-4 top-1/2 transform -translate-y-1/2 z-10 rounded-2xl p-4 w-28 panel-shadow;
+            @apply absolute right-4 top-1/2 transform -translate-y-1/2 z-10 rounded-2xl p-4 w-40 panel-shadow glass-effect;
         }
-        
-        .direction-btn {
-            @apply bg-primary hover:bg-blue-600 rounded-lg p-3 flex items-center justify-center btn-hover;
+
+        /* 通用按钮样式 - 磨砂玻璃 */
+        button:not(.num-btn):not(.direction-btn) {
+            @apply glass-effect !important;
+        }
+
+        /* 清除按钮 - 独立样式 */
+        #clear-btn {
+            @apply glass-effect rounded-lg p-3 text-center text-xl w-full glass-effect-hover !important;
+        }
+
+        /* 功能按钮样式 */
+        .function-btn {
+            @apply glass-effect rounded-lg p-3 flex items-center justify-center btn-hover w-full;
         }
     </style>
     <script>
@@ -210,10 +241,10 @@ ${lineweight}`);
             theme: {
                 extend: {
                     colors: {
-                        primary: '#3B82F6',
-                        secondary: '#10B981',
-                        accent: '#F59E0B',
-                        dark: '#1F2937',
+                        primary: 'transparent',
+                        secondary: 'transparent',
+                        accent: 'transparent',
+                        dark: 'transparent',
                     },
                 }
             }
@@ -224,23 +255,23 @@ ${lineweight}`);
     <div class="flex flex-col h-screen relative">
         <!-- 顶部工具栏 - 保留原有样式 -->
         <div class="top-toolbar">
-            <button id="zoom-in" class="w-10 h-10 flex items-center justify-center rounded-full bg-gray-800 btn-hover">
+            <button id="zoom-in" class="w-10 h-10 flex items-center justify-center rounded-full glass-effect btn-hover">
                 <i class="fa fa-search-plus text-lg"></i>
             </button>
-            <button id="zoom-out" class="w-10 h-10 flex items-center justify-center rounded-full bg-gray-800 btn-hover">
+            <button id="zoom-out" class="w-10 h-10 flex items-center justify-center rounded-full glass-effect btn-hover">
                 <i class="fa fa-search-minus text-lg"></i>
             </button>
-            <button id="zoom-reset" class="w-10 h-10 flex items-center justify-center rounded-full bg-gray-800 btn-hover">
+            <button id="zoom-reset" class="w-10 h-10 flex items-center justify-center rounded-full glass-effect btn-hover">
                 <i class="fa fa-arrows-alt text-lg"></i>
             </button>
-            <div class="h-6 border-r border-gray-600 mx-1"></div>
-            <button id="history-btn" class="w-10 h-10 flex items-center justify-center rounded-full bg-accent btn-hover">
+            <div class="h-6 border-r border-white/20 mx-1"></div>
+            <button id="history-btn" class="w-10 h-10 flex items-center justify-center rounded-full glass-effect btn-hover">
                 <i class="fa fa-history text-lg"></i>
             </button>
-            <button id="save-btn" class="w-10 h-10 flex items-center justify-center rounded-full bg-primary btn-hover">
+            <button id="save-btn" class="w-10 h-10 flex items-center justify-center rounded-full glass-effect btn-hover">
                 <i class="fa fa-download text-lg"></i>
             </button>
-            <button id="share-btn" class="w-10 h-10 flex items-center justify-center rounded-full bg-secondary btn-hover">
+            <button id="share-btn" class="w-10 h-10 flex items-center justify-center rounded-full glass-effect btn-hover">
                 <i class="fa fa-share-alt text-lg"></i>
             </button>
         </div>
@@ -250,125 +281,130 @@ ${lineweight}`);
             <canvas id="drawing-canvas" class="absolute top-0 left-0"></canvas>
         </div>
         
-        <!-- 左侧控制面板 - 保留原有布局结构，仅做功能调整 -->
+        <!-- 左侧控制面板 - 调整数字键盘布局 -->
         <div class="left-panel">
-            <div class="mb-6">
-                <label class="block text-xs text-gray-400 mb-1">长度 (mm)</label>
+            <div class="mb-4">
+                <label class="block text-xs text-gray-300 mb-1">长度 (mm)</label>
                 <div class="relative">
-                    <input type="number" id="distance-input" class="w-full bg-gray-800 rounded-lg px-3 py-2 text-center input-focus text-lg" value="100" min="1" max="200000">
-                    <div class="absolute -right-2 -top-2 bg-primary text-xs px-2 py-1 rounded-full">mm</div>
+                    <input type="number" id="distance-input" class="w-full glass-effect rounded-lg px-3 py-2 text-center input-focus text-lg" value="100" min="1" max="200000">
+                    <div class="absolute -right-2 -top-2 glass-effect text-xs px-2 py-1 rounded-full">mm</div>
                 </div>
-                <!-- 数字输入键盘 - 放大50% + 合并清除/小数点按钮（保留原有网格布局） -->
-                <div class="mt-2 grid grid-cols-3 gap-2">
-                    <button class="num-btn bg-gray-800 hover:bg-gray-700 rounded p-3 text-center text-xl" data-value="1">1</button>
-                    <button class="num-btn bg-gray-800 hover:bg-gray-700 rounded p-3 text-center text-xl" data-value="2">2</button>
-                    <button class="num-btn bg-gray-800 hover:bg-gray-700 rounded p-3 text-center text-xl" data-value="3">3</button>
-                    <button class="num-btn bg-gray-800 hover:bg-gray-700 rounded p-3 text-center text-xl" data-value="4">4</button>
-                    <button class="num-btn bg-gray-800 hover:bg-gray-700 rounded p-3 text-center text-xl" data-value="5">5</button>
-                    <button class="num-btn bg-gray-800 hover:bg-gray-700 rounded p-3 text-center text-xl" data-value="6">6</button>
-                    <button class="num-btn bg-gray-800 hover:bg-gray-700 rounded p-3 text-center text-xl" data-value="7">7</button>
-                    <button class="num-btn bg-gray-800 hover:bg-gray-700 rounded p-3 text-center text-xl" data-value="8">8</button>
-                    <button class="num-btn bg-gray-800 hover:bg-gray-700 rounded p-3 text-center text-xl" data-value="9">9</button>
-                    <button class="num-btn bg-gray-800 hover:bg-gray-700 rounded p-3 text-center text-xl" data-value="0">0</button>
-                    <button class="num-btn bg-gray-800 hover:bg-gray-700 rounded p-3 text-center text-xl" data-value="00">00</button>
-                    <!-- 合并清除按钮（取消小数点） -->
-                    <button id="clear-btn" class="bg-red-600 hover:bg-red-500 rounded p-3 text-center text-xl">清除</button>
+                
+                <!-- 数字输入键盘 - 苹果拨号键布局 (圆形) -->
+                <div class="mt-3 grid grid-cols-3 gap-2 justify-items-center">
+                    <button class="num-btn" data-value="1">1</button>
+                    <button class="num-btn" data-value="2">2</button>
+                    <button class="num-btn" data-value="3">3</button>
+                    <button class="num-btn" data-value="4">4</button>
+                    <button class="num-btn" data-value="5">5</button>
+                    <button class="num-btn" data-value="6">6</button>
+                    <button class="num-btn" data-value="7">7</button>
+                    <button class="num-btn" data-value="8">8</button>
+                    <button class="num-btn" data-value="9">9</button>
+                    <button class="num-btn" data-value="00">00</button>
+                    <button class="num-btn" data-value="0">0</button>
+                    <button class="num-btn" data-value=".">.</button>
                 </div>
+                
+                <!-- 清除按钮 - 独立出来 -->
+                <button id="clear-btn" class="mt-3">
+                    <i class="fa fa-times mr-1"></i>清除
+                </button>
             </div>
             
-            <!-- 新增：显示线段长度按钮（保留原有按钮样式） -->
-            <button id="toggle-length-btn" class="w-full bg-purple-600 hover:bg-purple-500 rounded-lg p-3 flex items-center justify-center mb-3 btn-hover">
+            <!-- 新增：显示线段长度按钮 -->
+            <button id="toggle-length-btn" class="function-btn mb-3">
                 <i class="fa fa-font text-xl mr-2"></i>
                 <span>显示长度</span>
             </button>
 
-            <!-- 保留原有确认按钮样式 -->
-            <button id="confirm-btn" class="w-full bg-green-600 hover:bg-green-500 rounded-lg p-3 flex items-center justify-center mb-3 btn-hover">
+            <!-- 确认按钮 -->
+            <button id="confirm-btn" class="function-btn mb-3">
                 <i class="fa fa-check text-xl mr-2"></i>
                 <span>确认</span>
             </button>
             
-            <!-- 保留原有删除按钮样式 -->
-            <button id="delete-btn" class="w-full bg-red-600 hover:bg-red-500 rounded-lg p-3 flex items-center justify-center mb-4 btn-hover">
+            <!-- 删除按钮 -->
+            <button id="delete-btn" class="function-btn mb-4">
                 <i class="fa fa-trash text-xl mr-2"></i>
                 <span>删除</span>
             </button>
             
-            <!-- 保留原有线宽控制样式 -->
+            <!-- 线宽控制 -->
             <div class="mb-4">
-                <label class="block text-xs text-gray-400 mb-1">线宽</label>
+                <label class="block text-xs text-gray-300 mb-1">线宽</label>
                 <input type="range" id="line-width" class="w-full slider-thumb" min="1" max="10" value="2">
-                <div class="text-center text-sm mt-1" id="line-width-value">2px</div>
+                <div class="text-center text-sm mt-1 text-gray-300" id="line-width-value">2px</div>
             </div>
         </div>
         
-        <!-- 右侧控制面板 - 完全保留原有样式 -->
+        <!-- 右侧控制面板 - 方向键改为圆形 -->
         <div class="right-panel">
             <div class="mb-4">
-                <button id="select-start-btn" class="w-full bg-accent hover:bg-yellow-500 rounded-lg p-3 flex items-center justify-center btn-hover">
+                <button id="select-start-btn" class="function-btn">
                     <i class="fa fa-crosshairs text-xl mr-2"></i>
                     <span>选择起点</span>
                 </button>
             </div>
             
             <div class="mb-6">
-                <label class="block text-xs text-gray-400 mb-1 text-center">线走向</label>
-                <div class="space-y-2">
-                    <button class="direction-btn w-full" data-direction="up">
+                <label class="block text-xs text-gray-300 mb-2 text-center">线走向</label>
+                <div class="flex flex-col items-center space-y-2">
+                    <button class="direction-btn" data-direction="up">
                         <i class="fa fa-arrow-up text-xl"></i>
                     </button>
                     <div class="flex space-x-2">
-                        <button class="direction-btn flex-1" data-direction="left">
+                        <button class="direction-btn" data-direction="left">
                             <i class="fa fa-arrow-left text-xl"></i>
                         </button>
-                        <button class="direction-btn flex-1" data-direction="right">
+                        <button class="direction-btn" data-direction="right">
                             <i class="fa fa-arrow-right text-xl"></i>
                         </button>
                     </div>
-                    <button class="direction-btn w-full" data-direction="down">
+                    <button class="direction-btn" data-direction="down">
                         <i class="fa fa-arrow-down text-xl"></i>
                     </button>
                 </div>
             </div>
             
             <div>
-                <label class="block text-xs text-gray-400 mb-1">坐标</label>
-                <div class="bg-gray-800 rounded-lg p-2 text-xs text-center">
-                    <div id="current-position">X: 0, Y: 0</div>
+                <label class="block text-xs text-gray-300 mb-1">坐标</label>
+                <div class="glass-effect rounded-lg p-2 text-xs text-center">
+                    <div id="current-position" class="text-gray-200">X: 0, Y: 0</div>
                 </div>
             </div>
         </div>
         
-        <!-- 分享菜单 (默认隐藏) - 保留原有功能 -->
-        <div id="share-menu" class="fixed inset-0 bg-black bg-opacity-50 z-20 hidden flex items-center justify-center">
-            <div class="bg-dark rounded-2xl p-6 w-80 panel-shadow">
-                <h3 class="text-lg font-semibold mb-4 text-center">分享或保存</h3>
+        <!-- 分享菜单 (默认隐藏) -->
+        <div id="share-menu" class="fixed inset-0 bg-black/50 z-20 hidden flex items-center justify-center">
+            <div class="glass-effect rounded-2xl p-6 w-80 panel-shadow">
+                <h3 class="text-lg font-semibold mb-4 text-center text-gray-100">分享或保存</h3>
                 <div class="space-y-3">
-                    <button id="save-dxf" class="w-full bg-primary hover:bg-blue-600 rounded-lg p-3 flex items-center justify-center btn-hover">
+                    <button id="save-dxf" class="function-btn">
                         <i class="fa fa-file-text-o text-lg mr-2"></i>
                         <span>保存为DXF</span>
                     </button>
-                    <button id="save-image" class="w-full bg-secondary hover:bg-green-600 rounded-lg p-3 flex items-center justify-center btn-hover">
+                    <button id="save-image" class="function-btn">
                         <i class="fa fa-image text-lg mr-2"></i>
                         <span>保存为图片</span>
                     </button>
-                    <button id="share-wechat" class="w-full bg-green-600 hover:bg-green-500 rounded-lg p-3 flex items-center justify-center btn-hover">
+                    <button id="share-wechat" class="function-btn">
                         <i class="fa fa-weixin text-lg mr-2"></i>
                         <span>分享到微信</span>
                     </button>
                 </div>
-                <button id="close-share" class="w-full mt-4 bg-gray-700 hover:bg-gray-600 rounded-lg p-3 flex items-center justify-center btn-hover">
+                <button id="close-share" class="function-btn mt-4">
                     <i class="fa fa-times text-lg mr-2"></i>
                     <span>关闭</span>
                 </button>
             </div>
         </div>
         
-        <!-- 历史记录面板 (默认隐藏) - 保留原有功能 -->
+        <!-- 历史记录面板 (默认隐藏) -->
         <div id="history-panel" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-10 control-panel rounded-2xl p-4 w-3/4 max-w-md panel-shadow hidden">
             <div class="flex justify-between items-center mb-3">
-                <h3 class="text-lg font-semibold">历史记录</h3>
-                <button id="close-history" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-700 hover:bg-gray-600">
+                <h3 class="text-lg font-semibold text-gray-100">历史记录</h3>
+                <button id="close-history" class="w-8 h-8 flex items-center justify-center rounded-full glass-effect hover:bg-white/10">
                     <i class="fa fa-times"></i>
                 </button>
             </div>
@@ -438,16 +474,16 @@ ${lineweight}`);
         
         // 设置事件监听 - 保留原有逻辑+新增长度按钮监听
         function setupEventListeners() {
-            // 数字键盘按钮（放大50%）
+            // 数字键盘按钮（圆形拨号键）
             document.querySelectorAll('.num-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const input = document.getElementById('distance-input');
                     const value = btn.dataset.value;
                     
-                    // 取消小数点功能，仅支持整数
-                    if (value !== '.') {
-                        input.value += value;
-                    }
+                    // 处理小数点
+                    if (value === '.' && input.value.includes('.')) return;
+                    
+                    input.value += value;
                     
                     // 限制最大值200000
                     const numValue = parseFloat(input.value) || 0;
@@ -457,24 +493,22 @@ ${lineweight}`);
                 });
             });
             
-            // 清除按钮（合并小数点按钮功能，仅保留清除）
+            // 清除按钮（独立）
             document.getElementById('clear-btn').addEventListener('click', () => {
                 const input = document.getElementById('distance-input');
                 input.value = '';
             });
             
-            // 方向按钮 - 保留原有逻辑
+            // 方向按钮 - 圆形样式
             document.querySelectorAll('.direction-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     if (isDeleting || isSelectingStartPoint) return;
                     
                     document.querySelectorAll('.direction-btn').forEach(b => {
-                        b.classList.remove('bg-blue-700');
-                        b.classList.add('bg-primary');
+                        b.classList.remove('bg-white/20');
                     });
                     
-                    btn.classList.remove('bg-primary');
-                    btn.classList.add('bg-blue-700');
+                    btn.classList.add('bg-white/20');
                     selectedDirection = btn.dataset.direction;
                 });
             });
@@ -491,8 +525,7 @@ ${lineweight}`);
                     
                     // 清除选中的方向
                     document.querySelectorAll('.direction-btn').forEach(btn => {
-                        btn.classList.remove('bg-blue-700');
-                        btn.classList.add('bg-primary');
+                        btn.classList.remove('bg-white/20');
                     });
                     selectedDirection = null;
                     
@@ -510,12 +543,8 @@ ${lineweight}`);
                 const btn = document.getElementById('toggle-length-btn');
                 if (showLineLength) {
                     btn.innerHTML = '<i class="fa fa-font text-xl mr-2"></i><span>隐藏长度</span>';
-                    btn.classList.remove('bg-purple-600', 'hover:bg-purple-500');
-                    btn.classList.add('bg-purple-800', 'hover:bg-purple-700');
                 } else {
                     btn.innerHTML = '<i class="fa fa-font text-xl mr-2"></i><span>显示长度</span>';
-                    btn.classList.remove('bg-purple-800', 'hover:bg-purple-700');
-                    btn.classList.add('bg-purple-600', 'hover:bg-purple-500');
                 }
                 drawAll();
             });
@@ -831,12 +860,12 @@ ${lineweight}`);
                 if (showEndpointGuide) {
                     ctx.beginPath();
                     ctx.arc(line.startX, line.startY, 3 / scale, 0, Math.PI * 2);
-                    ctx.fillStyle = '#EF4444';
+                    ctx.fillStyle = 'rgba(239, 68, 68, 0.8)';
                     ctx.fill();
                     
                     ctx.beginPath();
                     ctx.arc(line.endX, line.endY, 3 / scale, 0, Math.PI * 2);
-                    ctx.fillStyle = '#EF4444';
+                    ctx.fillStyle = 'rgba(239, 68, 68, 0.8)';
                     ctx.fill();
                 }
 
@@ -853,7 +882,7 @@ ${lineweight}`);
                     }
                     
                     ctx.font = `${16 / scale}px Arial`;
-                    ctx.fillStyle = '#34D399';
+                    ctx.fillStyle = 'rgba(52, 211, 153, 0.9)';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(`${line.length} mm`, textX, textY);
@@ -864,7 +893,7 @@ ${lineweight}`);
             if (!isDeleting) {
                 ctx.beginPath();
                 ctx.arc(currentX, currentY, 5 / scale, 0, Math.PI * 2);
-                ctx.fillStyle = '#3B82F6';
+                ctx.fillStyle = 'rgba(59, 130, 246, 0.8)';
                 ctx.fill();
             }
             
@@ -880,13 +909,9 @@ ${lineweight}`);
             const deleteBtn = document.getElementById('delete-btn');
             
             if (isDeleting) {
-                deleteBtn.classList.remove('bg-red-600', 'hover:bg-red-500');
-                deleteBtn.classList.add('bg-gray-500', 'hover:bg-gray-400');
                 deleteBtn.innerHTML = '<i class="fa fa-check text-xl mr-2"></i><span>确认</span>';
                 canvas.addEventListener('click', deleteLineAtPosition);
             } else {
-                deleteBtn.classList.remove('bg-gray-500', 'hover:bg-gray-400');
-                deleteBtn.classList.add('bg-red-600', 'hover:bg-red-500');
                 deleteBtn.innerHTML = '<i class="fa fa-trash text-xl mr-2"></i><span>删除</span>';
                 canvas.removeEventListener('click', deleteLineAtPosition);
             }
@@ -1159,7 +1184,7 @@ ${lineweight}`);
         
         function showToast(message) {
             const toast = document.createElement('div');
-            toast.className = 'fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-dark bg-opacity-80 text-white px-4 py-2 rounded-lg z-30';
+            toast.className = 'fixed bottom-10 left-1/2 transform -translate-x-1/2 glass-effect text-white px-4 py-2 rounded-lg z-30';
             toast.textContent = message;
             
             document.body.appendChild(toast);
@@ -1195,7 +1220,7 @@ ${lineweight}`);
                 const isCurrent = i === historyIndex;
                 
                 const recordItem = document.createElement('div');
-                recordItem.className = `flex items-center justify-between p-2 rounded-lg ${isCurrent ? 'bg-blue-900 bg-opacity-50' : 'bg-gray-800'}`;
+                recordItem.className = `flex items-center justify-between p-2 rounded-lg ${isCurrent ? 'bg-white/10' : 'glass-effect'}`;
                 
                 let actionText;
                 if (record.action === 'draw') {
@@ -1209,10 +1234,10 @@ ${lineweight}`);
                 
                 recordItem.innerHTML = `
                     <div>
-                        <div class="font-medium">${actionText}</div>
+                        <div class="font-medium text-gray-100">${actionText}</div>
                         <div class="text-xs text-gray-400">${timeText}</div>
                     </div>
-                    <button class="history-jump-btn px-3 py-1 rounded bg-primary hover:bg-blue-600 text-sm" data-index="${i}">
+                    <button class="history-jump-btn px-3 py-1 rounded glass-effect hover:bg-white/10 text-sm" data-index="${i}">
                         跳转
                     </button>
                 `;
@@ -1295,8 +1320,6 @@ ${lineweight}`);
             const selectBtn = document.getElementById('select-start-btn');
             
             if (isSelectingStartPoint) {
-                selectBtn.classList.remove('bg-accent', 'hover:bg-yellow-500');
-                selectBtn.classList.add('bg-green-500', 'hover:bg-green-400');
                 selectBtn.innerHTML = '<i class="fa fa-check text-xl mr-2"></i><span>确认选择</span>';
                 canvas.style.cursor = 'crosshair';
                 
@@ -1304,8 +1327,6 @@ ${lineweight}`);
                     toggleDeleteMode();
                 }
             } else {
-                selectBtn.classList.remove('bg-green-500', 'hover:bg-green-400');
-                selectBtn.classList.add('bg-accent', 'hover:bg-yellow-500');
                 selectBtn.innerHTML = '<i class="fa fa-crosshairs text-xl mr-2"></i><span>选择起点</span>';
                 canvas.style.cursor = 'grab';
             }
